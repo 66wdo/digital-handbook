@@ -62,6 +62,7 @@ plugins:
 
 # ---- Markdown 扩展（支持提示框、标签页、任务清单、表格等）----
 markdown_extensions:
+  - md_in_html
   - abbr
   - attr_list
   - def_list

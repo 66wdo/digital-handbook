@@ -1,6 +1,9 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0"
+set "GIT_PYTHON_GIT_EXECUTABLE=%~dp0..\runtime\PortableGit\cmd\git.exe"
+set "DISABLE_MKDOCS_2_WARNING=true"
+set "NO_MKDOCS_2_WARNING=true"
 echo ============================================
 echo   正在构建静态网站，产物输出到 site\ 目录
 echo ============================================
