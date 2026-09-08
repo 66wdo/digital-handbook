@@ -1,0 +1,33 @@
+/* ===== 个人知识库自定义样式 ===== */
+
+/* 中文阅读体验：行高放宽、字号微调 */
+.md-typeset {
+  font-size: 0.76rem;
+  line-height: 1.75;
+}
+
+.md-typeset td,
+.md-typeset th {
+  font-size: 0.72rem;
+}
+
+/* 正文字宽上限，超宽屏阅读不累 */
+.md-grid {
+  max-width: 1440px;
+}
+
+/* 首页分类卡片 */
+.md-typeset .grid.cards > ul > li {
+  border-radius: 10px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.md-typeset .grid.cards > ul > li:hover {
+  transform: translateY(-2px);
+}
+
+/* 占位草稿统一样式（配合 admonition note 使用） */
+.md-typeset details,
+.md-typeset .admonition {
+  border-radius: 8px;
+}

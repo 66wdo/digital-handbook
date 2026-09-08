@@ -1,0 +1,47 @@
+# GitHub Pages 自动部署流水线
+# 推送到 main/master 分支后，自动构建并发布网站
+# 启用方式：GitHub 仓库 -> Settings -> Pages -> Source 选择 "GitHub Actions"
+name: deploy-site
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # git-revision-date 插件需要完整历史
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+      - name: 构建网站（严格模式，有错误会直接失败）
+        run: mkdocs build --strict --verbose
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
