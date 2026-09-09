@@ -1,18 +1,18 @@
 @echo off
-chcp 65001 >nul
 cd /d "%~dp0"
 set "GIT_PYTHON_GIT_EXECUTABLE=%~dp0..\runtime\PortableGit\cmd\git.exe"
 set "DISABLE_MKDOCS_2_WARNING=true"
 set "NO_MKDOCS_2_WARNING=true"
 echo ============================================
-echo   æ­£åœ¨æ„å»ºé™æ€ç½‘ç«™ï¼Œäº§ç‰©è¾“å‡ºåˆ° site\ ç›®å½•
+echo   ÕıÔÚ¹¹½¨¾²Ì¬ÍøÕ¾£¬²úÎïÊä³öµ½ site Ä¿Â¼
 echo ============================================
 ".venv\Scripts\mkdocs.exe" build --clean
-if %errorlevel%==0 (
-    echo.
-    echo æ„å»ºæˆåŠŸï¼é™æ€æ–‡ä»¶ä½äº: %~dp0site
-) else (
-    echo.
-    echo æ„å»ºå¤±è´¥ï¼Œè¯·æŠŠä¸Šæ–¹æŠ¥é”™ä¿¡æ¯å‘å‡ºæ¥æ’æŸ¥ã€‚
-)
+if errorlevel 1 goto fail
+echo.
+echo ¹¹½¨³É¹¦£¡¾²Ì¬ÎÄ¼şÎ»ÓÚ: %~dp0site
+goto end
+:fail
+echo.
+echo ¹¹½¨Ê§°Ü£¬Çë°ÑÉÏ·½±¨´íĞÅÏ¢·¢³öÀ´ÅÅ²é¡£
+:end
 pause

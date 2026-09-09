@@ -1,13 +1,12 @@
 @echo off
-chcp 65001 >nul
 cd /d "%~dp0"
 set "GIT_PYTHON_GIT_EXECUTABLE=%~dp0..\runtime\PortableGit\cmd\git.exe"
 set "DISABLE_MKDOCS_2_WARNING=true"
 set "NO_MKDOCS_2_WARNING=true"
 echo ============================================
-echo   æ­£åœ¨å¯åŠ¨æœ¬åœ°é¢„è§ˆï¼Œè¯·ä¿æŒæœ¬çª—å£æ‰“å¼€
-echo   æµè§ˆå™¨è®¿é—®: http://127.0.0.1:8000
-echo   åœæ­¢æœåŠ¡: åœ¨æœ¬çª—å£æŒ‰ Ctrl+C
+echo   ÕıÔÚÆô¶¯±¾µØÔ¤ÀÀ£¬Çë±£³Ö±¾´°¿Ú´ò¿ª
+echo   ä¯ÀÀÆ÷·ÃÎÊ: http://127.0.0.1:8000
+echo   Í£Ö¹·şÎñ: ÔÚ±¾´°¿Ú°´ Ctrl+C
 echo ============================================
 start "" "http://127.0.0.1:8000"
 ".venv\Scripts\mkdocs.exe" serve
