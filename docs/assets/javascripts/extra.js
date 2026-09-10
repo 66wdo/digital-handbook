@@ -1,26 +1,31 @@
 /* ============================================================
- * 个人知识库 · 交互动画脚本（原生 JS，无任何依赖，离线可用）
- * 功能：
- *   1. 分区标记 data-section —— 不同分区可挂不同动画主题
+ * 个人知识库 · 交互动画脚本（原生 JS，无依赖，离线可用）
+ *   1. data-section 分区标记（用于分区差异化动画）
  *   2. 顶部阅读进度条
- *   3. 页面转场：点击内部链接旧页柔和淡出，新页上浮淡入
- *      （同时兼容整页加载与 Material 的 instant 无刷新切换）
- *   4. 内容区块滚动渐显（轻微 stagger，克制不花哨）
- *   5. 首页 / 分类卡片级联上浮
- * 无障碍：尊重系统「减少动态效果」设置，开启后不做位移动画。
+ *   3. 页面转场：旧页淡出、新页上浮（兼容 Material instant 无刷新）
+ *   4. 内容区块滚动渐显
+ *   5. 卡片级联上浮
+ *   6. 右侧目录默认折叠到“部件层”，点击展开其下问题，当前章节自动展开
+ *   7. 返回上一页悬浮按钮
  * ============================================================ */
 (function () {
   "use strict";
 
   var reduceMotion = window.matchMedia &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  // 只有 JS 可用且不需要减少动画时才隐藏待动画元素，保证降级时内容直接可见
   if (!reduceMotion) document.documentElement.classList.add("has-anim");
 
-  var lastContent = null; // 记录当前 .md-content，用于识别 instant 切换后的新页面
+  var lastContent = null;
+  var backBtn = null;
 
-  /* ---------- 1. 根据 URL 给 body 打分区标记 ---------- */
+  var CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+    'stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' +
+    '<polyline points="6 9 12 15 18 9"></polyline></svg>';
+  var ARROW_LEFT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+    'stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' +
+    '<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>';
+
+  /* ---------- 1. 分区标记 ---------- */
   function detectSection() {
     var path = decodeURIComponent(location.pathname || "");
     var map = [
@@ -40,7 +45,7 @@
     document.body.setAttribute("data-section", section);
   }
 
-  /* ---------- 2. 顶部阅读进度条（rAF 节流） ---------- */
+  /* ---------- 2. 阅读进度条 ---------- */
   var ticking = false;
   function updateProgress() {
     var doc = document.documentElement;
@@ -52,65 +57,56 @@
   function onScroll() {
     if (!ticking) {
       ticking = true;
-      window.requestAnimationFrame(updateProgress);
+      window.requestAnimationFrame(function () {
+        updateProgress();
+        syncTocActive();
+      });
     }
   }
 
   /* ---------- 3. 页面转场 ---------- */
-  function currentContent() {
-    return document.querySelector(".md-content");
-  }
+  function currentContent() { return document.querySelector(".md-content"); }
 
-  // 新页面进入：重播上浮淡入
   function playEnter() {
     var main = currentContent();
     if (!main) return;
     document.body.classList.remove("is-leaving");
     if (reduceMotion) { main.classList.add("enter-done"); return; }
     main.classList.remove("enter-done", "is-entering");
-    void main.offsetWidth; // 强制 reflow，保证动画重新触发
+    void main.offsetWidth;
     main.classList.add("is-entering");
     window.setTimeout(function () { main.classList.add("enter-done"); }, 640);
   }
 
-  // 判断一个链接是否属于“站内页面跳转”（这些才做退场，外链/下载/同页锚点不做）
   function isInternalNav(anchor) {
     if (!anchor || !anchor.href) return false;
     if (anchor.target && anchor.target !== "_self") return false;
     if (anchor.hasAttribute("download")) return false;
-    if (anchor.getAttribute("href") && anchor.getAttribute("href").charAt(0) === "#") return false;
+    var h = anchor.getAttribute("href");
+    if (h && h.charAt(0) === "#") return false;
     var url;
     try { url = new URL(anchor.href, location.href); } catch (e) { return false; }
     if (url.origin !== location.origin) return false;
-    if (url.pathname === location.pathname) return false; // 同页只换 hash
+    if (url.pathname === location.pathname) return false;
     var ext = url.pathname.split(".").pop().toLowerCase();
-    if (["zip", "pdf", "png", "jpg", "jpeg", "gif", "svg", "mp4"].indexOf(ext) !== -1) return false;
+    if (["zip","pdf","png","jpg","jpeg","gif","svg","mp4"].indexOf(ext) !== -1) return false;
     return true;
   }
 
-  // 点击站内链接：旧页先柔和淡出下沉，instant 会紧接着替换为新页
   function onLinkClick(e) {
     if (reduceMotion || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
     var a = e.target.closest ? e.target.closest("a") : null;
     if (!isInternalNav(a)) return;
     document.body.classList.add("is-leaving");
-    // 兜底：若跳转被取消（例如 instant 判定不外跳），300ms 后一定复位，避免卡在退场态
-    window.setTimeout(function () {
-      document.body.classList.remove("is-leaving");
-    }, 320);
+    window.setTimeout(function () { document.body.classList.remove("is-leaving"); }, 320);
   }
 
-  /* ---------- 4. 内容区块滚动渐显 ---------- */
+  /* ---------- 4. 滚动渐显 ---------- */
   var io = null;
   var REVEAL_SEL = [
-    ".md-content h2",
-    ".md-content h3",
-    ".md-content .admonition",
-    ".md-content details",
-    ".md-content .tabbed-set",
-    ".md-content .grid",
-    ".md-content table",
-    ".md-content blockquote"
+    ".md-content h2", ".md-content h3", ".md-content .admonition",
+    ".md-content details", ".md-content .tabbed-set", ".md-content .grid",
+    ".md-content table", ".md-content blockquote"
   ].join(",");
 
   function setupReveal() {
@@ -129,7 +125,6 @@
         }
       });
     }, { rootMargin: "0px 0px -8% 0px", threshold: 0.05 });
-
     nodes.forEach(function (n) {
       if (n.tagName === "H2") group = 0;
       var delay = Math.min(group * 50, 200);
@@ -140,33 +135,127 @@
     });
   }
 
-  /* ---------- 5. 卡片级联上浮 ---------- */
+  /* ---------- 5. 卡片级联 ---------- */
   function setupCards() {
-    var cards = document.querySelectorAll(".md-content .grid.cards > ul > li");
-    cards.forEach(function (card, idx) {
+    document.querySelectorAll(".md-content .grid.cards > ul > li").forEach(function (card, idx) {
       card.classList.add("card-rise");
       if (!reduceMotion) card.style.animationDelay = (idx * 70) + "ms";
       else card.classList.add("card-rise-done");
     });
   }
 
-  /* ---------- 初始化（首次加载与每次 instant 切换都会调用） ---------- */
+  /* ---------- 6. 右侧目录：默认折叠到部件层，点击展开 ---------- */
+  function syncTocActive() {
+    // 页面里可能有多份二级目录（左侧主导航内嵌一份、右侧侧栏一份），都要同步
+    document.querySelectorAll(".md-nav--secondary").forEach(function (sec) {
+      var active = sec.querySelector(".md-nav__link--active");
+      sec.querySelectorAll("li.toc-parent").forEach(function (p) {
+        // 用户手动收/放过后不再自动干预
+        if (p.getAttribute("data-manual") === "1") return;
+        if (active && p.contains(active)) p.classList.add("toc-open");
+      });
+    });
+  }
+
+  function setupToc() {
+    // 同时处理左侧内嵌与右侧可见的两份二级目录
+    document.querySelectorAll(".md-nav--secondary").forEach(function (sec) {
+      var tops = sec.querySelectorAll(":scope > .md-nav__list > li");
+      tops.forEach(function (li) {
+        var sub = li.querySelector(":scope > nav.md-nav");
+        var link = li.querySelector(":scope > .md-nav__link");
+        if (!sub || !link) return;
+        li.classList.add("toc-parent");
+        if (!link.querySelector(".toc-toggle")) {
+          var btn = document.createElement("button");
+          btn.className = "toc-toggle";
+          btn.setAttribute("aria-label", "展开或收起本节目录");
+          btn.innerHTML = CHEVRON;
+          // 点小三角：只展开/收起，不跳转
+          btn.addEventListener("click", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            li.setAttribute("data-manual", "1");
+            li.classList.toggle("toc-open");
+          });
+          link.appendChild(btn);
+        }
+        // 点部件标题：正常跳转锚点，同时展开它
+        link.addEventListener("click", function () {
+          li.setAttribute("data-manual", "1");
+          li.classList.add("toc-open");
+        });
+      });
+      // 刚进入页面还没滚动定位 active 时，默认展开第一个部件，其余收起
+      if (!sec.querySelector("li.toc-parent.toc-open")) {
+        var first = sec.querySelector("li.toc-parent");
+        if (first) first.classList.add("toc-open");
+      }
+    });
+    syncTocActive();
+  }
+
+  /* ---------- 7. 返回上一页 ---------- */
+  function pathSegments() {
+    return decodeURIComponent(location.pathname || "").split("/").filter(Boolean);
+  }
+
+  function fallbackUrl(seg) {
+    // 目录型 URL：数码/分类/文章 → 回分类首页；分类首页 → 回站点首页
+    if (seg.length <= 2) return "/";
+    return "/" + seg[0] + "/" + seg[1] + "/";
+  }
+
+  function sameOrigin(ref) {
+    try { return new URL(ref).origin === location.origin; } catch (e) { return false; }
+  }
+
+  function setupBack() {
+    var seg = pathSegments();
+    // 站点首页不显示返回
+    var isHome = seg.length === 0 ||
+      (seg.length === 1 && /index\.html?$/.test(seg[0]));
+    if (!backBtn) {
+      backBtn = document.createElement("a");
+      backBtn.className = "back-fab";
+      backBtn.innerHTML = ARROW_LEFT + "<span>返回</span>";
+      backBtn.addEventListener("click", function (e) {
+        if (window.history.length > 1 && document.referrer && sameOrigin(document.referrer)) {
+          e.preventDefault();
+          window.history.back();
+        }
+        // 否则按 href 回退到上级页面
+      });
+      document.body.appendChild(backBtn);
+    }
+    backBtn.setAttribute("href", fallbackUrl(seg));
+    backBtn.style.display = isHome ? "none" : "";
+    if (!isHome && !reduceMotion) {
+      backBtn.classList.remove("back-show");
+      void backBtn.offsetWidth;
+      backBtn.classList.add("back-show");
+    } else if (!isHome) {
+      backBtn.classList.add("back-show");
+    }
+  }
+
+  /* ---------- 初始化 ---------- */
   function init() {
     detectSection();
     playEnter();
     setupReveal();
     setupCards();
+    setupToc();
+    setupBack();
     updateProgress();
   }
 
   document.addEventListener("DOMContentLoaded", function () {
     lastContent = currentContent();
     init();
-
     window.addEventListener("scroll", onScroll, { passive: true });
-    document.addEventListener("click", onLinkClick, true); // 捕获阶段，先于 instant 处理
+    document.addEventListener("click", onLinkClick, true);
 
-    // Material instant 无刷新切换：用 MutationObserver 感知 .md-content 被替换
     if ("MutationObserver" in window) {
       var mo = new MutationObserver(function () {
         var c = currentContent();
@@ -179,7 +268,6 @@
       mo.observe(document.body, { childList: true, subtree: true });
     }
 
-    // 多重兜底：instant 的 locationchange、bfcache pageshow、前进后退
     window.addEventListener("locationchange", init);
     window.addEventListener("pageshow", init);
     window.addEventListener("popstate", init);

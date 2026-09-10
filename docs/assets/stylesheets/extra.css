@@ -1,21 +1,17 @@
 /* ============================================================
  * 个人知识库自定义样式 + 交互动画
- * 设计取向：克制、流畅、有“高级感”——动效只走 transform / opacity，
- * 主题变色走 background-color / color / border-color 的平滑过渡。
+ * 原则：动效只走 transform / opacity（GPU 合成，高刷屏跟手、不重绘卡顿）；
+ *      不做主题颜色的全局渐变（会触发大面积重绘、反而掉帧），深浅色一点即换。
  * ============================================================ */
 
 :root {
-  /* 接近 iOS / 主流安卓 UI 的缓出曲线 */
   --ease-app: cubic-bezier(0.22, 0.61, 0.36, 1);
   --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
   --brand-teal: #009485;
   --brand-amber: #ffab00;
-  --rise: 18px;
-  /* 深浅主题切换的“缓冲”时长，按一下缓慢变色，不刺眼 */
-  --theme-dur: 0.45s;
 }
 
-/* ---------- 中文阅读体验：行高放宽、字号微调（原有保留） ---------- */
+/* ---------- 中文阅读体验（原有保留） ---------- */
 .md-typeset {
   font-size: 0.76rem;
   line-height: 1.75;
@@ -26,40 +22,12 @@
   font-size: 0.72rem;
 }
 
-/* 正文字宽上限，超宽屏阅读不累 */
 .md-grid {
   max-width: 1440px;
 }
 
 html {
   scroll-behavior: smooth;
-}
-
-/* ============================================================
- * 0. 深浅色切换：所有“表面 / 文字 / 边框 / 图标”平滑渐变
- *    只过渡颜色类属性，不碰 transform，避免干扰位移动画。
- *    （自定义了 transform 的组件在各自规则里也补上颜色过渡）
- * ============================================================ */
-body,
-.md-header, .md-header__topic, .md-header__button,
-.md-tabs, .md-tabs__list, .md-tabs__link,
-.md-main, .md-content, .md-content__inner,
-.md-sidebar, .md-sidebar__inner, .md-nav, .md-nav__item,
-.md-footer, .md-top,
-.md-typeset, .md-typeset h1, .md-typeset h2, .md-typeset h3, .md-typeset h4,
-.md-typeset p, .md-typeset li, .md-typeset td, .md-typeset th,
-.md-typeset blockquote, .md-typeset .tabbed-set, .md-typeset .tabbed-labels,
-.md-typeset .tabbed-labels label, .md-typeset code, .md-typeset pre,
-.md-typeset .highlight, .md-search, .md-search__inner, .md-search__form,
-.md-search__output, .md-search__scrollwrap,
-.headerlink, .md-ellipsis {
-  transition:
-    background-color var(--theme-dur) var(--ease-app),
-    color var(--theme-dur) var(--ease-app),
-    border-color var(--theme-dur) var(--ease-app),
-    box-shadow var(--theme-dur) var(--ease-app),
-    fill var(--theme-dur) var(--ease-app),
-    stroke var(--theme-dur) var(--ease-app);
 }
 
 /* ============================================================
@@ -88,23 +56,15 @@ body::before {
   will-change: transform, opacity;
 }
 
-/* 新页面进入 */
 .has-anim .md-content.is-entering .md-content__inner {
   animation: pageEnter 0.5s var(--ease-out-soft) both;
 }
 
 @keyframes pageEnter {
-  from {
-    opacity: 0;
-    transform: translateY(24px) scale(0.992);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(24px) scale(0.992); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* 旧页面退场（点击内部链接瞬间，由 JS 加 is-leaving） */
 .has-anim body.is-leaving .md-content__inner {
   animation: pageLeave 0.18s var(--ease-app) forwards;
 }
@@ -115,7 +75,7 @@ body::before {
 }
 
 /* ============================================================
- * 3. 内容区块滚动渐显（JS 标记 .has-anim 时才初始隐藏，保证无 JS 可读）
+ * 3. 内容区块滚动渐显
  * ============================================================ */
 .has-anim .md-content .reveal {
   opacity: 0;
@@ -131,7 +91,7 @@ body::before {
 }
 
 /* ============================================================
- * 4. 标题层级：明显加粗、一眼区分正文，且保持美观（不换字体）
+ * 4. 标题层级：明显加粗 + 主题色竖条，一眼区分正文（不换字体）
  * ============================================================ */
 .md-typeset h2 {
   font-weight: 700;
@@ -158,7 +118,6 @@ body::before {
   font-weight: 600;
 }
 
-/* 标题前的小图标：主题色、与文字对齐，更精致 */
 .md-typeset h2 > .twemoji,
 .md-typeset h3 > .twemoji {
   color: var(--brand-teal);
@@ -167,28 +126,27 @@ body::before {
 }
 
 /* ============================================================
- * 5. 首页 / 分类卡片：级联上浮 + hover 光泽扫过
+ * 5. 卡片：级联上浮 + hover 光泽扫过 + 按压反馈
  * ============================================================ */
 .md-typeset .grid.cards > ul > li {
   border-radius: 12px;
   position: relative;
   overflow: hidden;
-  transition:
-    transform 0.22s var(--ease-app),
-    box-shadow 0.22s var(--ease-app),
-    border-color 0.22s var(--ease-app),
-    background-color var(--theme-dur) var(--ease-app),
-    color var(--theme-dur) var(--ease-app);
+  transition: transform 0.22s var(--ease-app),
+              box-shadow 0.22s var(--ease-app),
+              border-color 0.22s var(--ease-app);
 }
 
-/* 卡片 hover：浮起 + 柔和投影 + 边框点亮 */
 .md-typeset .grid.cards > ul > li:hover {
   transform: translateY(-4px);
   box-shadow: 0 10px 28px -12px rgba(0, 148, 133, 0.35);
   border-color: var(--brand-teal);
 }
 
-/* hover 时一道极淡的高光从左扫到右，提升质感 */
+.md-typeset .grid.cards > ul > li:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
 .md-typeset .grid.cards > ul > li::after {
   content: "";
   position: absolute;
@@ -208,7 +166,6 @@ body::before {
   to   { transform: translateX(120%); }
 }
 
-/* 卡片内大图标 hover 轻微放大 */
 .md-typeset .grid.cards > ul > li:hover .lg,
 .md-typeset .grid.cards > ul > li:hover .twemoji {
   transform: scale(1.12) rotate(-3deg);
@@ -219,7 +176,6 @@ body::before {
   transition: transform 0.25s var(--ease-app);
 }
 
-/* JS 驱动的级联入场 */
 .has-anim .md-content .card-rise {
   opacity: 0;
   animation: cardRise 0.6s var(--ease-out-soft) forwards;
@@ -236,18 +192,16 @@ body::before {
 }
 
 /* ============================================================
- * 6. 导航与控件的微交互
+ * 6. 导航与控件微交互
  * ============================================================ */
 .md-tabs__link {
-  transition: color 0.2s var(--ease-app), opacity 0.2s var(--ease-app),
-              background-color var(--theme-dur) var(--ease-app);
+  transition: color 0.2s var(--ease-app), opacity 0.2s var(--ease-app);
 }
 
 .md-tabs__item {
   position: relative;
 }
 
-/* 顶部一级导航：橙色下划线伸长（你认可的效果，保留） */
 .md-tabs__item::after {
   content: "";
   position: absolute;
@@ -267,10 +221,8 @@ body::before {
   transform: scaleX(1);
 }
 
-/* 侧边栏链接：hover 轻微右移 */
 .md-nav__link {
-  transition: color 0.18s var(--ease-app), transform 0.18s var(--ease-app),
-              background-color var(--theme-dur) var(--ease-app);
+  transition: color 0.18s var(--ease-app), transform 0.18s var(--ease-app);
   border-radius: 6px;
 }
 
@@ -278,17 +230,23 @@ body::before {
   transform: translateX(3px);
 }
 
-/* 按钮 */
+/* 左侧主导航当前项：浅色底块平滑出现 */
+.md-nav__item--active > .md-nav__link {
+  font-weight: 700;
+}
+
 .md-typeset .md-button {
-  transition: transform 0.2s var(--ease-app), box-shadow 0.2s var(--ease-app),
-              background-color var(--theme-dur) var(--ease-app),
-              color var(--theme-dur) var(--ease-app);
+  transition: transform 0.2s var(--ease-app), box-shadow 0.2s var(--ease-app);
   border-radius: 8px;
 }
 
 .md-typeset .md-button:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.35);
+}
+
+.md-typeset .md-button:active {
+  transform: scale(0.97);
 }
 
 .grid.cards a:hover .octicon-arrow-right-24 {
@@ -298,7 +256,7 @@ body::before {
 .md-top,
 .md-header__button,
 .md-search__button {
-  transition: transform 0.25s var(--ease-app), background-color 0.2s;
+  transition: transform 0.25s var(--ease-app);
 }
 
 .md-top:hover {
@@ -306,23 +264,143 @@ body::before {
 }
 
 /* ============================================================
- * 7. 正文细节：提示框 / 表格 / 图片 / 标签页
+ * 7. 右侧目录（TOC）：默认只显示部件层，点击展开其下问题
+ * ============================================================ */
+.md-nav--secondary > .md-nav__title {
+  font-weight: 700;
+}
+
+/* 顶层（部件）标题更醒目，和里面的问题区分开 */
+.md-nav--secondary > .md-nav__list > li > .md-nav__link {
+  position: relative;
+  font-weight: 700;
+  padding-top: 0.35rem;
+}
+
+/* 子级列表默认收起，展开时用 max-height 平滑过渡。
+   必须显式复位 Material 给子 nav 的 flex / 位移（那是移动端滑入用的），
+   否则 flex 容器在 max-height:0 下不会把子项裁掉。 */
+.md-nav--secondary li.toc-parent > nav.md-nav {
+  display: block !important;
+  transform: none !important;
+  overflow: hidden !important;
+  max-height: 0 !important;
+  opacity: 0;
+  transition: max-height 0.34s var(--ease-app), opacity 0.26s var(--ease-app);
+}
+
+.md-nav--secondary li.toc-parent.toc-open > nav.md-nav {
+  display: block !important;
+  transform: none !important;
+  max-height: 600px !important;
+  opacity: 1;
+}
+
+/* 展开开关小三角 */
+.toc-toggle {
+  all: unset;
+  position: absolute;
+  right: 0.2rem;
+  top: 0.35rem;
+  width: 1.3rem;
+  height: 1.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 6px;
+  opacity: 0.65;
+  transition: opacity 0.18s var(--ease-app), transform 0.18s var(--ease-app),
+              background-color 0.18s var(--ease-app);
+}
+
+.toc-toggle:hover {
+  opacity: 1;
+  background-color: rgba(0, 148, 133, 0.12);
+}
+
+.toc-toggle svg {
+  width: 0.72rem;
+  height: 0.72rem;
+  transition: transform 0.28s var(--ease-app);
+}
+
+.md-nav--secondary li.toc-parent.toc-open > .md-nav__link > .toc-toggle svg {
+  transform: rotate(180deg);
+}
+
+/* 顶层条目需要给小三角留位 */
+.md-nav--secondary > .md-nav__list > li.toc-parent > .md-nav__link {
+  padding-right: 1.6rem;
+}
+
+/* ============================================================
+ * 8. 返回上一页悬浮按钮（右下角、回到顶部上方）
+ * ============================================================ */
+.back-fab {
+  position: fixed;
+  right: 1.2rem;
+  bottom: 5.2rem;
+  z-index: 900;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 999px;
+  background: var(--md-primary-fg-color, var(--brand-teal));
+  color: var(--md-primary-bg-color, #fff);
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 8px 22px -10px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(14px) scale(0.9);
+  transition: transform 0.28s var(--ease-out-soft), opacity 0.28s var(--ease-out-soft),
+              box-shadow 0.2s var(--ease-app);
+}
+
+.has-anim .back-fab.back-show {
+  animation: backIn 0.5s var(--ease-out-soft) forwards;
+}
+
+.back-fab svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.back-fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px -10px rgba(0, 0, 0, 0.55);
+  color: var(--md-primary-bg-color, #fff);
+}
+
+.back-fab:active {
+  transform: scale(0.94);
+}
+
+@keyframes backIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.9); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media print {
+  .back-fab { display: none !important; }
+}
+
+/* ============================================================
+ * 9. 正文细节：提示框 / 表格 / 标签页 / 图片
  * ============================================================ */
 .md-typeset details,
-.md-typeset .admonition,
-.md-typeset .admonition-title {
-  transition: box-shadow 0.2s var(--ease-app),
-              background-color var(--theme-dur) var(--ease-app),
-              border-color var(--theme-dur) var(--ease-app),
-              color var(--theme-dur) var(--ease-app);
+.md-typeset .admonition {
   border-radius: 10px;
+  transition: box-shadow 0.2s var(--ease-app), transform 0.2s var(--ease-app);
 }
 
 .md-typeset .admonition:hover {
   box-shadow: 0 6px 20px -12px rgba(0, 0, 0, 0.3);
 }
 
-/* 表格行 hover 高亮，便于对照参数 */
 .md-typeset tbody tr {
   transition: background-color 0.15s var(--ease-app);
 }
@@ -331,7 +409,6 @@ body::before {
   background-color: rgba(0, 148, 133, 0.07);
 }
 
-/* 标签页切换淡入 */
 .md-typeset .tabbed-content {
   animation: tabFade 0.35s var(--ease-app);
 }
@@ -341,7 +418,6 @@ body::before {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* 图片淡入 + 圆角，hover 轻微放大 */
 .md-typeset img {
   border-radius: 8px;
   transition: transform 0.3s var(--ease-app), box-shadow 0.3s var(--ease-app);
@@ -352,10 +428,13 @@ body::before {
   box-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.4);
 }
 
+/* 正文内链接：hover 时柔和变色（局部，不走全局） */
+.md-typeset a {
+  transition: color 0.15s var(--ease-app);
+}
+
 /* ============================================================
- * 8. 分区差异化动画主题（data-section 由 extra.js 写入）
- *    目前先为「电脑」分区做专属质感，其余沿用默认；
- *    后续要让每个分区动画不同，只需追加 [data-section="xxx"]。
+ * 10. 分区差异化主题（data-section 由 extra.js 写入）
  * ============================================================ */
 body[data-section="pc"]::before {
   background: linear-gradient(90deg, #00897b, #4dd0e1 55%, var(--brand-amber));
@@ -375,13 +454,13 @@ body[data-section="pc"] .md-typeset .grid.cards > ul > li:hover {
 }
 
 /* ============================================================
- * 9. 无障碍：开启「减少动态效果」时关闭一切动画/位移，
- *    但保留主题切换的颜色渐变（它不产生运动）。
+ * 11. 无障碍：减少动态效果
  * ============================================================ */
 @media (prefers-reduced-motion: reduce) {
   .has-anim .md-content.is-entering .md-content__inner,
   .has-anim body.is-leaving .md-content__inner,
   .has-anim .md-content .card-rise,
+  .has-anim .back-fab.back-show,
   .md-typeset .tabbed-content {
     animation: none !important;
   }
@@ -395,7 +474,8 @@ body[data-section="pc"] .md-typeset .grid.cards > ul > li:hover {
     opacity: 1 !important;
     transform: none !important;
   }
-  .has-anim .md-content .card-rise {
+  .has-anim .md-content .card-rise,
+  .back-fab {
     opacity: 1 !important;
   }
 }
