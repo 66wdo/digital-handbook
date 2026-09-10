@@ -11,7 +11,7 @@
 
 <div class="grid cards" markdown>
 
--   :material-magnify-scan:{ .lg .middle } __硬件怎么选__
+-   :material-magnify-scan:{ .lg .middle } __硬件__
 
     ---
 
@@ -34,6 +34,14 @@
     第一次开机看什么、黑屏/无限重启怎么办、怎么用检测软件「把感觉变成证据」，附最终检查清单。
 
     [:octicons-arrow-right-24: 进入](点亮与故障排查.md)
+
+-   :material-monitor-cellphone:{ .lg .middle } __软件调试与测试__
+
+    ---
+
+    CPU-Z、GPU-Z、HWiNFO、微星小飞机、TM5、烤机软件分别看什么，以及装完机按什么顺序验证稳定性。
+
+    [:octicons-arrow-right-24: 进入](软件调试与测试.md)
 
 </div>
 

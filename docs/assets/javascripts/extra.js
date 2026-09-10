@@ -6,9 +6,11 @@
  *   4. 内容区块滚动渐显
  *   5. 卡片级联上浮
  *   6. 右侧目录：多级手风琴，只展开当前阅读链，滑走自动收回（任意层级）
- *   7. 左上角“返回上一层级”
- *   8. 点目录跳转后目标标题短暂橙色高亮
+ *      —— 点击目录时立即展开目标并在平滑滚动期间“冻结”，不沿途开合
+ *   7. 左上角常驻“返回上一层级”（fixed，样式见 extra.css）
+ *   8. 点目录跳转：标题停在视口中上、到位后只闪一次橙色高亮
  *   9. 背景氛围光斑（缓慢漂移，只动 transform）
+ * 设计原则：只改 transform/opacity；滚动里只在 active 真正变化时才动 DOM。
  * ============================================================ */
 (function () {
   "use strict";
@@ -47,23 +49,103 @@
     document.body.setAttribute("data-section", section);
   }
 
-  /* ---------- 2. 进度条 + 目录手风琴跟随 ---------- */
+  /* ---------- 2. 进度条 + 目录手风琴 ---------- */
   var ticking = false;
+  var tocLocked = false;          // 点击目录后的平滑滚动期间为 true，冻结手风琴
+  var tocMaxTimer = null, tocEndTimer = null, flashTimer = null;
+
   function updateProgress() {
     var doc = document.documentElement;
     var max = doc.scrollHeight - doc.clientHeight;
     var ratio = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 1;
     document.body.style.setProperty("--scroll", ratio.toFixed(4));
-    ticking = false;
   }
+
+  // 在一份侧栏里，按“目标链接”展开它的全部祖先 li，其余收起
+  function renderAccordion(sec, preferred) {
+    var target = preferred || sec.querySelector(".md-nav__link--active");
+    var parents = sec.querySelectorAll("li.toc-parent");
+    for (var i = 0; i < parents.length; i++) {
+      var p = parents[i];
+      if (target && p.contains(target)) p.classList.add("toc-open");
+      else p.classList.remove("toc-open");
+    }
+  }
+
+  // 普通滚动时跟随阅读位置；active 没变就完全不碰 DOM（避免掉帧/闪烁）
+  function syncTocAccordion() {
+    if (tocLocked) return;
+    var secs = document.querySelectorAll(".md-nav--secondary");
+    for (var i = 0; i < secs.length; i++) {
+      var sec = secs[i];
+      var a = sec.querySelector(".md-nav__link--active");
+      var key = a ? a.getAttribute("href") : "__none__";
+      if (sec._lastKey === key) continue;
+      sec._lastKey = key;
+      renderAccordion(sec);
+    }
+  }
+
+  function linkForId(id) {
+    try { return document.querySelectorAll('.md-nav--secondary a[href="#' + id + '"]'); }
+    catch (e) { return []; }
+  }
+
+  // 点击目录：立即按目标展开（不等滚动），并在滚动到位前冻结跟随
+  function expandToId(id) {
+    var links = linkForId(id);
+    document.querySelectorAll(".md-nav--secondary").forEach(function (sec) {
+      var target = sec.querySelector('a[href="#' + id + '"]');
+      renderAccordion(sec, target);
+    });
+    return links;
+  }
+
+  function unlockToc() {
+    tocLocked = false;
+    clearTimeout(tocMaxTimer); clearTimeout(tocEndTimer);
+    document.querySelectorAll(".md-nav--secondary").forEach(function (sec) {
+      sec._lastKey = null;
+      renderAccordion(sec);   // 到位后与最终 active 对齐一次
+    });
+    flashCurrentHeading();  // 到位后只闪这一次
+  }
+
+  function lockTocBriefly() {
+    tocLocked = true;
+    clearTimeout(tocMaxTimer); clearTimeout(tocEndTimer);
+    tocMaxTimer = window.setTimeout(unlockToc, 1300); // 兜底，防止滚动事件丢失
+  }
+
   function onScroll() {
     if (!ticking) {
       ticking = true;
       window.requestAnimationFrame(function () {
         updateProgress();
-        syncTocAccordion();
+        if (tocLocked) {
+          // 滚动中保持冻结；连续 110ms 没有新滚动即认为到位
+          clearTimeout(tocEndTimer);
+          tocEndTimer = window.setTimeout(unlockToc, 110);
+        } else {
+          syncTocAccordion();
+        }
+        ticking = false;
       });
     }
+  }
+
+  // 让目标标题停在视口中上（约 26% 处），而不是贴着顶部
+  function headingTop(id) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    var top = el.getBoundingClientRect().top + window.scrollY - window.innerHeight * 0.26;
+    return { el: el, top: Math.max(top, 0) };
+  }
+  function scrollToId(id, smooth) {
+    var pos = headingTop(id);
+    if (!pos) return false;
+    window.scrollTo({ top: pos.top, behavior: reduceMotion ? "auto" : (smooth ? "smooth" : "auto") });
+    return true;
   }
 
   /* ---------- 3. 页面转场 ---------- */
@@ -147,20 +229,8 @@
   }
 
   /* ---------- 6. 多级手风琴目录 ---------- */
-  // 只展开“当前 active 标题”所在的祖先链，其余层级全部收回；滑走即自动合上
-  function syncTocAccordion() {
-    document.querySelectorAll(".md-nav--secondary").forEach(function (sec) {
-      var active = sec.querySelector(".md-nav__link--active");
-      sec.querySelectorAll("li.toc-parent").forEach(function (p) {
-        if (active && p.contains(active)) p.classList.add("toc-open");
-        else p.classList.remove("toc-open");
-      });
-    });
-  }
-
   function setupToc() {
     document.querySelectorAll(".md-nav--secondary").forEach(function (sec) {
-      // 任意层级：只要这个 li 里还套着一层 nav，就给它加折叠开关
       sec.querySelectorAll("li").forEach(function (li) {
         var sub = li.querySelector(":scope > nav.md-nav");
         var link = li.querySelector(":scope > .md-nav__link");
@@ -178,11 +248,10 @@
           });
           link.appendChild(btn);
         }
-        link.addEventListener("click", function () { li.classList.add("toc-open"); });
       });
     });
     syncTocAccordion();
-    // 极端情况下还没有 active（页面顶部），默认展开第一个顶层条目
+    // 页面顶部还没有 active 时，默认展开第一个顶层条目
     document.querySelectorAll(".md-nav--secondary").forEach(function (sec) {
       if (!sec.querySelector("li.toc-open")) {
         var first = sec.querySelector(":scope > .md-nav__list > li.toc-parent");
@@ -191,16 +260,30 @@
     });
   }
 
-  /* ---------- 7. 左上角“返回上一层级” ---------- */
+  // 统一接管“右侧/内嵌目录里的页内锚点点击”
+  function setupTocJump() {
+    document.addEventListener("click", function (e) {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+      var a = e.target.closest && e.target.closest(".md-nav--secondary a[href^='#']");
+      if (!a) return;
+      var id = a.getAttribute("href").slice(1);
+      if (!document.getElementById(id)) return; // 找不到就交回浏览器默认行为
+      e.preventDefault();
+      try { history.replaceState(null, "", "#" + id); } catch (err) { location.hash = id; }
+      expandToId(id);        // 立即展开目标祖先链
+      lockTocBriefly();      // 平滑滚动期间冻结跟随，避免沿途开合
+      scrollToId(id, true);  // 平滑滚到视口中上
+    }, true);
+  }
+
+  /* ---------- 7. 左上角“返回上一层级”（fixed 常驻） ---------- */
   function pathSegments() {
     return decodeURIComponent(location.pathname || "").split("/").filter(Boolean);
   }
-
   function topTabName() {
     var t = document.querySelector(".md-tabs__item--active .md-tabs__link");
     return t ? t.textContent.trim() : "";
   }
-
   function setupCrumb() {
     var old = document.querySelector(".up-crumb");
     if (old) old.remove();
@@ -209,10 +292,11 @@
     var seg = pathSegments();
     var isHome = seg.length === 0 ||
       (seg.length === 1 && /index\.html?$/.test(seg[0]));
-    if (isHome) return;
+    if (isHome) { document.body.classList.remove("has-upcrumb"); return; }
+    document.body.classList.add("has-upcrumb");
 
     var href, label;
-    if (seg.length <= 2) { href = "/"; label = "首页"; }          // 分类首页 → 站点首页
+    if (seg.length <= 2) { href = "/"; label = "首页"; }
     else { href = "/" + seg[0] + "/" + seg[1] + "/"; label = topTabName() || seg[1]; }
 
     var a = document.createElement("a");
@@ -222,8 +306,7 @@
     inner.insertBefore(a, inner.firstChild);
   }
 
-  /* ---------- 8. 跳转后目标标题橙色高亮 ---------- */
-  var flashTimer = null;
+  /* ---------- 8. 目标标题橙色高亮（只闪一次） ---------- */
   function flashCurrentHeading() {
     if (!location.hash) return;
     var id = decodeURIComponent(location.hash.slice(1));
@@ -234,7 +317,7 @@
     void el.offsetWidth;
     el.classList.add("toc-flash");
     window.clearTimeout(flashTimer);
-    flashTimer = window.setTimeout(function () { el.classList.remove("toc-flash"); }, 1600);
+    flashTimer = window.setTimeout(function () { el.classList.remove("toc-flash"); }, 1700);
   }
 
   /* ---------- 9. 背景氛围层 ---------- */
@@ -260,32 +343,37 @@
     setupToc();
     setupCrumb();
     updateProgress();
-    window.setTimeout(flashCurrentHeading, 60);
+    // 带锚点进入（刷新/跨页#锚点）：直接定位到视口中上，再闪一次
+    window.requestAnimationFrame(function () {
+      if (location.hash) {
+        var id = decodeURIComponent(location.hash.slice(1));
+        if (document.getElementById(id)) scrollToId(id, false);
+      }
+      window.setTimeout(flashCurrentHeading, 80);
+    });
   }
 
   document.addEventListener("DOMContentLoaded", function () {
     lastContent = currentContent();
     init();
+    setupTocJump();
     window.addEventListener("scroll", onScroll, { passive: true });
     document.addEventListener("click", onLinkClick, true);
-    window.addEventListener("hashchange", flashCurrentHeading);
-    // 点右侧目录时也补一次高亮（部分锚点跳转不触发 hashchange）
-    document.addEventListener("click", function (e) {
-      var a = e.target.closest && e.target.closest(".md-nav--secondary a[href^='#']");
-      if (a) window.setTimeout(flashCurrentHeading, 80);
-    }, true);
+    // 浏览器原生 hashchange（极少触发）兜底高亮一次
+    window.addEventListener("hashchange", function () {
+      if (!tocLocked) flashCurrentHeading();
+    });
 
     if ("MutationObserver" in window) {
       var mo = new MutationObserver(function () {
         var c = currentContent();
         if (c && c !== lastContent) {
           lastContent = c;
+          tocLocked = false;
           if (location.hash) {
-            // 带锚点进入（刷新/外链/跨页#锚点）时保留定位，不要拉回顶部
             window.requestAnimationFrame(function () {
-              var t = null;
-              try { t = document.getElementById(decodeURIComponent(location.hash.slice(1))); } catch (e) {}
-              if (t) t.scrollIntoView();
+              var id = decodeURIComponent(location.hash.slice(1));
+              if (document.getElementById(id)) scrollToId(id, false);
             });
           } else {
             window.scrollTo(0, 0);

@@ -17,8 +17,8 @@
 .md-grid { max-width: 1440px; }
 html { scroll-behavior: smooth; }
 
-/* 点目录跳转后，标题停在视口偏上位置而不是贴死顶部 */
-.md-typeset h2, .md-typeset h3, .md-typeset h4 { scroll-margin-top: 32vh; }
+/* 点目录跳转后，标题停在视口中上位置而不是贴死顶部（与 extra.js 的 26% 对齐） */
+.md-typeset h2, .md-typeset h3, .md-typeset h4, .md-typeset h5, .md-typeset h6 { scroll-margin-top: 26vh; }
 
 /* ============================================================
  * 背景氛围层：缓慢漂移的极淡光斑（只动 transform，不抢正文）
@@ -29,33 +29,37 @@ html { scroll-behavior: smooth; }
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
+  contain: layout paint;
+  transform: translate3d(0,0,0);
 }
 .md-main { position: relative; z-index: 1; }
 .ambient-blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(72px);
+  filter: blur(42px);
   will-change: transform;
-  opacity: 0.55;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  opacity: 0.5;
 }
 .blob-a {
-  width: 44vw; height: 44vw; left: -10vw; top: -12vw;
-  background: radial-gradient(circle, rgba(0,148,133,.15), transparent 70%);
-  animation: drift1 27s ease-in-out infinite alternate;
+  width: 38vw; height: 38vw; left: -10vw; top: -12vw;
+  background: radial-gradient(circle, rgba(0,148,133,.13), transparent 70%);
+  animation: drift1 34s ease-in-out infinite alternate;
 }
 .blob-b {
-  width: 40vw; height: 40vw; right: -12vw; top: 16vh;
-  background: radial-gradient(circle, rgba(77,208,225,.13), transparent 70%);
-  animation: drift2 33s ease-in-out infinite alternate;
+  width: 34vw; height: 34vw; right: -12vw; top: 16vh;
+  background: radial-gradient(circle, rgba(77,208,225,.11), transparent 70%);
+  animation: drift2 40s ease-in-out infinite alternate;
 }
 .blob-c {
-  width: 36vw; height: 36vw; left: 26vw; bottom: -16vw;
-  background: radial-gradient(circle, rgba(255,171,0,.09), transparent 70%);
-  animation: drift3 30s ease-in-out infinite alternate;
+  width: 30vw; height: 30vw; left: 26vw; bottom: -16vw;
+  background: radial-gradient(circle, rgba(255,171,0,.08), transparent 70%);
+  animation: drift3 36s ease-in-out infinite alternate;
 }
-@keyframes drift1 { to { transform: translate(6vw, 9vh) scale(1.12); } }
-@keyframes drift2 { to { transform: translate(-7vw, 10vh) scale(1.09); } }
-@keyframes drift3 { to { transform: translate(5vw, -8vh) scale(1.14); } }
+@keyframes drift1 { to { transform: translate3d(5vw, 7vh, 0) scale(1.1); } }
+@keyframes drift2 { to { transform: translate3d(-6vw, 8vh, 0) scale(1.08); } }
+@keyframes drift3 { to { transform: translate3d(4vw, -6vh, 0) scale(1.12); } }
 [data-md-color-scheme="slate"] .blob-a { background: radial-gradient(circle, rgba(38,208,222,.18), transparent 70%); }
 [data-md-color-scheme="slate"] .blob-b { background: radial-gradient(circle, rgba(0,148,133,.20), transparent 70%); }
 [data-md-color-scheme="slate"] .blob-c { background: radial-gradient(circle, rgba(255,171,0,.12), transparent 70%); }
@@ -189,34 +193,45 @@ body::before {
 }
 
 /* ============================================================
- * 左上角“返回上一层级”
+ * 左上角常驻“返回上一层级”（fixed，滚动不消失，随时点得到）
  * ============================================================ */
 .up-crumb {
+  position: fixed;
+  top: 4.15rem; left: 1rem; z-index: 900;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  margin-bottom: 1.15rem;
-  padding: 0.34rem 0.85rem 0.34rem 0.62rem;
+  padding: 0.4rem 0.9rem 0.4rem 0.66rem;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 700;
   line-height: 1;
   color: var(--brand-teal);
-  background: rgba(0,148,133,.10);
-  border: 1px solid rgba(0,148,133,.28);
+  background: var(--md-default-bg-color);
+  background: color-mix(in srgb, var(--md-default-bg-color) 88%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0,148,133,.30);
+  box-shadow: 0 6px 18px -10px rgba(0,0,0,.35);
   transition: transform 0.22s var(--ease-app), background-color 0.22s var(--ease-app),
               color 0.22s var(--ease-app), box-shadow 0.22s var(--ease-app);
 }
+/* 三栏桌面：让开左侧主导航，贴在内容列左缘 */
+@media (min-width: 1220px) {
+  .up-crumb { left: max(13.1rem, calc(50vw - 45rem)); }
+}
+/* 胶囊常驻，给正文顶部留出避让高度，避免遮住标题 */
+body.has-upcrumb .md-content__inner { padding-top: 2.9rem; }
 .up-crumb svg { width: 0.92rem; height: 0.92rem; transition: transform 0.22s var(--ease-app); }
 .up-crumb:hover {
   background: var(--brand-teal); color: #fff;
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px -10px rgba(0,148,133,.6);
+  box-shadow: 0 10px 22px -10px rgba(0,148,133,.6);
 }
 .up-crumb:hover svg { transform: translateX(-3px); }
 .up-crumb:active { transform: scale(0.95); }
-.has-anim .up-crumb { opacity: 0; animation: crumbIn 0.5s var(--ease-out-soft) 0.04s forwards; }
-@keyframes crumbIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+.has-anim .up-crumb { opacity: 0; animation: crumbIn 0.45s var(--ease-out-soft) 0.05s forwards; }
+@keyframes crumbIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
 /* ============================================================
  * 导航与控件微交互
@@ -243,7 +258,13 @@ body::before {
 .md-typeset .md-button:hover { transform: translateY(-1px); box-shadow: 0 6px 16px -8px rgba(0,0,0,.35); }
 .md-typeset .md-button:active { transform: scale(0.97); }
 .grid.cards a:hover .octicon-arrow-right-24 { transform: translateX(3px); }
-.md-top, .md-header__button, .md-search__button { transition: transform 0.25s var(--ease-app); }
+.md-header__button, .md-search__button { transition: transform 0.25s var(--ease-app); }
+/* 回到顶部：只做上浮/向下收起，去掉 Material 默认的横向位移（点按时不再“往右跳”） */
+.md-top {
+  transition: transform 0.25s var(--ease-app), opacity 0.2s var(--ease-app), background-color 0.2s var(--ease-app);
+  transform: none;
+}
+.md-top--hidden { transform: translateY(150%) !important; opacity: 0 !important; }
 .md-top:hover { transform: translateY(-3px) scale(1.06); }
 
 /* ============================================================
@@ -253,34 +274,22 @@ body::before {
 .md-nav--secondary > .md-nav__list > li > .md-nav__link {
   position: relative; font-weight: 700; padding-top: 0.35rem;
 }
-/* 复位 Material 给子 nav 的移动端 flex/位移，改用 max-height 折叠 */
+/* 复位 Material 给子 nav 的移动端 flex/位移，改用 max-height 折叠；
+   整体一次利落展开，不做逐子项级联（避免快速滚动时反复重排掉帧） */
 .md-nav--secondary li.toc-parent > nav.md-nav {
   display: block !important;
   transform: none !important;
   overflow: hidden !important;
   max-height: 0 !important;
   opacity: 0;
-  transition: max-height 0.34s var(--ease-app), opacity 0.26s var(--ease-app);
+  transition: max-height 0.26s var(--ease-app), opacity 0.2s var(--ease-app);
 }
 .md-nav--secondary li.toc-parent.toc-open > nav.md-nav {
   display: block !important;
   transform: none !important;
-  max-height: 1400px !important;
+  max-height: 1500px !important;
   opacity: 1;
 }
-/* 展开时子条目依次淡入，增强“逐层打开”的动画感 */
-.has-anim .md-nav--secondary li.toc-open > nav.md-nav > .md-nav__list > li {
-  animation: tocItemIn 0.34s var(--ease-out-soft) both;
-}
-.has-anim .md-nav--secondary li.toc-open > nav.md-nav > .md-nav__list > li:nth-child(1) { animation-delay: .02s; }
-.has-anim .md-nav--secondary li.toc-open > nav.md-nav > .md-nav__list > li:nth-child(2) { animation-delay: .05s; }
-.has-anim .md-nav--secondary li.toc-open > nav.md-nav > .md-nav__list > li:nth-child(3) { animation-delay: .08s; }
-.has-anim .md-nav--secondary li.toc-open > nav.md-nav > .md-nav__list > li:nth-child(4) { animation-delay: .11s; }
-.has-anim .md-nav--secondary li.toc-open > nav.md-nav > .md-nav__list > li:nth-child(5) { animation-delay: .14s; }
-.has-anim .md-nav--secondary li.toc-open > nav.md-nav > .md-nav__list > li:nth-child(6) { animation-delay: .17s; }
-.has-anim .md-nav--secondary li.toc-open > nav.md-nav > .md-nav__list > li:nth-child(7) { animation-delay: .2s; }
-.has-anim .md-nav--secondary li.toc-open > nav.md-nav > .md-nav__list > li:nth-child(8) { animation-delay: .23s; }
-@keyframes tocItemIn { from { opacity: 0; transform: translateX(-7px); } to { opacity: 1; transform: none; } }
 /* 折叠小三角 */
 .toc-toggle {
   all: unset;
@@ -312,16 +321,16 @@ body::before {
 .md-typeset a { transition: color 0.15s var(--ease-app); }
 
 /* 自绘线性 SVG 配图容器 */
-.figure-svg { margin: 1.5em 0; text-align: center; }
+.figure-svg { margin: 1.7em 0; text-align: center; }
 .figure-svg svg {
-  max-width: 100%; height: auto; border-radius: 12px;
+  max-width: 100%; height: auto; border-radius: 14px;
   border: 1px solid var(--md-default-fg-color--lightest);
   background: var(--md-surface-color, var(--md-default-bg-color));
-  padding: 1rem 1.1rem;
+  padding: 1.1rem 1.2rem;
 }
 .figure-svg figcaption, .figure-svg .fig-cap {
-  font-size: 0.7rem; color: var(--md-default-fg-color--light);
-  margin-top: 0.55rem; line-height: 1.5;
+  font-size: 0.8rem; color: var(--md-default-fg-color--light);
+  margin-top: 0.7rem; line-height: 1.6;
 }
 
 /* ============================================================
