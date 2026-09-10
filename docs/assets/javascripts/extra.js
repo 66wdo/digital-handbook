@@ -53,6 +53,9 @@
   var ticking = false;
   var tocLocked = false;          // 点击目录后的平滑滚动期间为 true，冻结手风琴
   var tocMaxTimer = null, tocEndTimer = null, flashTimer = null;
+  var pinId = null;               // 点击目录后锁定的目标：停在它附近时，手风琴以它为准（不盲信滚动监听）
+  var lastFlashAt = 0;            // 上次高亮时间，防止同标题短时间重播（“又闪一下”）
+  var followWrap = null, followTop = null;  // 锁定期间固定右侧目录自身的滚动位置，不让它沿途跟随
 
   function updateProgress() {
     var doc = document.documentElement;
@@ -72,43 +75,117 @@
     }
   }
 
-  // 普通滚动时跟随阅读位置；active 没变就完全不碰 DOM（避免掉帧/闪烁）
+  // 点击跳转后，只要目标标题还停在视口中上区域，目录就以它为准；
+  // 真正滚出这个区段才解除，交回滚动跟随。解决“点主板还停在上一分区”。
+  function pinnedAnchor(sec) {
+    if (!pinId) return null;
+    var el = document.getElementById(pinId);
+    if (!el) { pinId = null; return null; }
+    var top = el.getBoundingClientRect().top;
+    var vh = window.innerHeight;
+    if (top < vh * 0.62 && top > -vh * 0.6) {
+      return tocLinkById(sec, pinId);
+    }
+    pinId = null;  // 目标已明显离开当前视口区段
+    return null;
+  }
+
+  function desiredTarget(sec) {
+    return pinnedAnchor(sec) || sec.querySelector(".md-nav__link--active");
+  }
+
+  // 普通滚动时跟随阅读位置；目标没变就完全不碰 DOM（避免掉帧/闪烁）
   function syncTocAccordion() {
     if (tocLocked) return;
     var secs = document.querySelectorAll(".md-nav--secondary");
     for (var i = 0; i < secs.length; i++) {
       var sec = secs[i];
-      var a = sec.querySelector(".md-nav__link--active");
-      var key = a ? a.getAttribute("href") : "__none__";
+      var t = desiredTarget(sec);
+      var key = t ? t.getAttribute("href") : "__none__";
       if (sec._lastKey === key) continue;
       sec._lastKey = key;
-      renderAccordion(sec);
+      renderAccordion(sec, t);
     }
   }
 
+  // Material 生成的目录 href 是「当前页路径#锚点」的完整/相对形式，且中文会被编码，
+  // 不能用 a[href="#id"] 精确匹配；统一用解码后的 a.hash 比较。
+  function hashOf(a) {
+    try { return (a.hash && a.hash.charAt(0) === "#") ? decodeURIComponent(a.hash.slice(1)) : null; }
+    catch (e) { return null; }
+  }
+  function tocLinkById(scope, id) {
+    var as = scope.querySelectorAll("a[href]");
+    for (var i = 0; i < as.length; i++) { if (hashOf(as[i]) === id) return as[i]; }
+    return null;
+  }
   function linkForId(id) {
-    try { return document.querySelectorAll('.md-nav--secondary a[href="#' + id + '"]'); }
-    catch (e) { return []; }
+    var out = [];
+    document.querySelectorAll(".md-nav--secondary").forEach(function (sec) {
+      var t = tocLinkById(sec, id); if (t) out.push(t);
+    });
+    return out;
   }
 
   // 点击目录：立即按目标展开（不等滚动），并在滚动到位前冻结跟随
   function expandToId(id) {
     var links = linkForId(id);
     document.querySelectorAll(".md-nav--secondary").forEach(function (sec) {
-      var target = sec.querySelector('a[href="#' + id + '"]');
+      var target = tocLinkById(sec, id);
       renderAccordion(sec, target);
+      if (target) sec._lastKey = target.getAttribute("href");
     });
     return links;
   }
 
+  // 让目标成为侧栏里唯一的高亮项（锁定期间防止 Material 沿途改 active）
+  function forceTocActive(id) {
+    document.querySelectorAll(".md-nav--secondary").forEach(function (sec) {
+      sec.querySelectorAll(".md-nav__link--active").forEach(function (a) {
+        a.classList.remove("md-nav__link--active");
+      });
+      sec.querySelectorAll(".md-nav__item--active").forEach(function (li) {
+        li.classList.remove("md-nav__item--active");
+      });
+      var t = tocLinkById(sec, id);
+      if (t) {
+        t.classList.add("md-nav__link--active");
+        var li = t.parentElement;
+        while (li && li !== sec) { if (li.classList) li.classList.add("md-nav__item--active"); li = li.parentElement; }
+      }
+    });
+  }
+
+  // 点击瞬间：目录直接“弹”到目标——展开、高亮、并让目标在目录框内瞬间就位（无滑动）
+  function snapTocTo(id) {
+    expandToId(id);
+    forceTocActive(id);
+    followWrap = null; followTop = null;
+    document.querySelectorAll(".md-sidebar--secondary .md-sidebar__scrollwrap").forEach(function (w) {
+      var t = tocLinkById(w, id);
+      if (t) {
+        t.scrollIntoView({ block: "nearest", behavior: "auto" });  // 瞬间，不做平滑
+        followWrap = w; followTop = w.scrollTop;                     // 记下就位位置，锁定期间保持
+      }
+    });
+  }
+
+  // 锁定期间：把目录框滚动位置拉回就位值，抵消 Material 的沿途跟随
+  function holdTocFollow() {
+    if (followWrap && followTop !== null) followWrap.scrollTop = followTop;
+  }
+
   function unlockToc() {
     tocLocked = false;
+    followWrap = null; followTop = null;   // 释放目录框滚动锁定
     clearTimeout(tocMaxTimer); clearTimeout(tocEndTimer);
     document.querySelectorAll(".md-nav--secondary").forEach(function (sec) {
-      sec._lastKey = null;
-      renderAccordion(sec);   // 到位后与最终 active 对齐一次
+      var t = desiredTarget(sec);   // 优先保持点击目标，而不是被旧滚动监听拉走
+      sec._lastKey = t ? t.getAttribute("href") : null;
+      renderAccordion(sec, t);
     });
-    flashCurrentHeading();  // 到位后只闪这一次
+    if (pinId) forceTocActive(pinId);
+    flashCurrentHeading();  // 到位后只高亮这一次
   }
 
   function lockTocBriefly() {
@@ -123,9 +200,11 @@
       window.requestAnimationFrame(function () {
         updateProgress();
         if (tocLocked) {
-          // 滚动中保持冻结；连续 110ms 没有新滚动即认为到位
+          // 正文平滑滚动期间，目录保持“点击瞬间的目标状态”，不沿途展开/跟随
+          if (pinId) forceTocActive(pinId);
+          holdTocFollow();
           clearTimeout(tocEndTimer);
-          tocEndTimer = window.setTimeout(unlockToc, 110);
+          tocEndTimer = window.setTimeout(unlockToc, 110); // 连续 110ms 无滚动即到位
         } else {
           syncTocAccordion();
         }
@@ -264,19 +343,20 @@
   function setupTocJump() {
     document.addEventListener("click", function (e) {
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-      var a = e.target.closest && e.target.closest(".md-nav--secondary a[href^='#']");
-      if (!a) return;
-      var id = a.getAttribute("href").slice(1);
+      var a = e.target.closest && e.target.closest(".md-nav--secondary a[href]");
+      if (!a || !a.hash || a.hash.charAt(0) !== "#") return; // 只接管本页锚点
+      var id = decodeURIComponent(a.hash.slice(1));
       if (!document.getElementById(id)) return; // 找不到就交回浏览器默认行为
       e.preventDefault();
+      pinId = id;            // 记住点击目标：停在它附近时目录始终展开它
       try { history.replaceState(null, "", "#" + id); } catch (err) { location.hash = id; }
-      expandToId(id);        // 立即展开目标祖先链
-      lockTocBriefly();      // 平滑滚动期间冻结跟随，避免沿途开合
-      scrollToId(id, true);  // 平滑滚到视口中上
+      snapTocTo(id);         // 目录瞬间“弹”到目标（展开+高亮+框内就位），不沿途滑
+      lockTocBriefly();      // 平滑滚动期间冻结目录跟随
+      scrollToId(id, true);  // 正文平滑滚到视口中上（只有正文动，目录不动）
     }, true);
   }
 
-  /* ---------- 7. 左上角“返回上一层级”（fixed 常驻） ---------- */
+  /* ---------- 7. “返回上一层级”：桌面端放在右侧目录底部，窄屏回退右下角悬浮 ---------- */
   function pathSegments() {
     return decodeURIComponent(location.pathname || "").split("/").filter(Boolean);
   }
@@ -284,11 +364,10 @@
     var t = document.querySelector(".md-tabs__item--active .md-tabs__link");
     return t ? t.textContent.trim() : "";
   }
+  var mqWide = window.matchMedia("(min-width: 1220px)");
   function setupCrumb() {
     var old = document.querySelector(".up-crumb");
     if (old) old.remove();
-    var inner = document.querySelector(".md-content__inner");
-    if (!inner) return;
     var seg = pathSegments();
     var isHome = seg.length === 0 ||
       (seg.length === 1 && /index\.html?$/.test(seg[0]));
@@ -303,21 +382,34 @@
     a.className = "up-crumb";
     a.setAttribute("href", href);
     a.innerHTML = ARROW_LEFT + "<span>返回" + label + "</span>";
-    inner.insertBefore(a, inner.firstChild);
+    // 桌面：钉在右侧目录栏底部；窄屏：目录收进带 transform 的抽屉，挂 body 才能 fixed 可见
+    var sideInner = document.querySelector(".md-sidebar--secondary .md-sidebar__inner");
+    if (mqWide.matches && sideInner) {
+      sideInner.appendChild(a); a.classList.add("in-side");
+    } else {
+      document.body.appendChild(a); a.classList.add("in-float");
+    }
   }
+  function onMqChange() { setupCrumb(); }
+  if (mqWide.addEventListener) mqWide.addEventListener("change", onMqChange);
+  else if (mqWide.addListener) mqWide.addListener(onMqChange);
 
   /* ---------- 8. 目标标题橙色高亮（只闪一次） ---------- */
   function flashCurrentHeading() {
-    if (!location.hash) return;
-    var id = decodeURIComponent(location.hash.slice(1));
+    var id = pinId || (location.hash ? decodeURIComponent(location.hash.slice(1)) : null);
+    if (!id) return;
     var el = null;
     try { el = document.getElementById(id); } catch (e) { return; }
     if (!el || !/^H[2-6]$/.test(el.tagName)) return;
+    var now = (window.performance ? performance.now() : Date.now());
+    // 已经在播放同一标题的高亮，就不重播（避免“到位后又忽然闪一下”）
+    if (el.classList.contains("toc-flash") && now - lastFlashAt < 900) return;
     el.classList.remove("toc-flash");
     void el.offsetWidth;
+    lastFlashAt = now;
     el.classList.add("toc-flash");
     window.clearTimeout(flashTimer);
-    flashTimer = window.setTimeout(function () { el.classList.remove("toc-flash"); }, 1700);
+    flashTimer = window.setTimeout(function () { el.classList.remove("toc-flash"); }, 1050);
   }
 
   /* ---------- 9. 背景氛围层 ---------- */
@@ -370,6 +462,7 @@
         if (c && c !== lastContent) {
           lastContent = c;
           tocLocked = false;
+          pinId = null;
           if (location.hash) {
             window.requestAnimationFrame(function () {
               var id = decodeURIComponent(location.hash.slice(1));

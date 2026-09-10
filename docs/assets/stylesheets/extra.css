@@ -137,26 +137,25 @@ body::before {
   color: var(--brand-teal); margin-right: 0.35rem; transform: translateY(-1px);
 }
 
-/* 点目录跳转后，目标标题短暂橙色高亮 */
+/* 点目录跳转后，目标标题做一次柔和、同步淡出的橙色强调（背景与底线同时起落，只播一次） */
 .md-typeset h2, .md-typeset h3, .md-typeset h4 { position: relative; }
-.md-typeset .toc-flash { animation: flashBg 1.6s ease; border-radius: 4px; }
+.md-typeset .toc-flash { animation: flashBg 1s ease-out both; border-radius: 5px; }
 .md-typeset .toc-flash::after {
   content: "";
   position: absolute;
-  left: 0; right: 0; bottom: -0.12em;
+  left: 0; right: 0; bottom: -0.1em;
   height: 2px; border-radius: 2px;
   background: var(--brand-amber);
   transform-origin: 0 50%;
-  animation: flashLine 1.5s var(--ease-app);
+  animation: flashLine 1s var(--ease-out-soft) both;
 }
 @keyframes flashBg {
-  0% { background-color: rgba(255,171,0,.18); }
+  0% { background-color: rgba(255,171,0,.16); }
   100% { background-color: transparent; }
 }
 @keyframes flashLine {
   0% { transform: scaleX(0); opacity: 0; }
-  14% { transform: scaleX(1); opacity: 1; }
-  72% { opacity: 1; }
+  12% { transform: scaleX(1); opacity: 1; }
   100% { transform: scaleX(1); opacity: 0; }
 }
 
@@ -193,45 +192,42 @@ body::before {
 }
 
 /* ============================================================
- * 左上角常驻“返回上一层级”（fixed，滚动不消失，随时点得到）
+ * “返回上一层级”：桌面端钉在右侧目录栏底部；窄屏目录收进抽屉，回退右下角悬浮
  * ============================================================ */
 .up-crumb {
-  position: fixed;
-  top: 4.15rem; left: 1rem; z-index: 900;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.35rem;
-  padding: 0.4rem 0.9rem 0.4rem 0.66rem;
+  box-sizing: border-box;
+  padding: 0.5rem 0.8rem;
   border-radius: 999px;
   font-size: 0.74rem;
   font-weight: 700;
   line-height: 1;
   color: var(--brand-teal);
-  background: var(--md-default-bg-color);
-  background: color-mix(in srgb, var(--md-default-bg-color) 88%, transparent);
+  background: color-mix(in srgb, var(--md-default-bg-color) 92%, transparent);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(0,148,133,.30);
-  box-shadow: 0 6px 18px -10px rgba(0,0,0,.35);
-  transition: transform 0.22s var(--ease-app), background-color 0.22s var(--ease-app),
-              color 0.22s var(--ease-app), box-shadow 0.22s var(--ease-app);
+  box-shadow: 0 6px 18px -12px rgba(0,0,0,.4);
+  transition: transform 0.24s var(--ease-out-soft), background-color 0.22s var(--ease-app),
+              color 0.22s var(--ease-app), box-shadow 0.24s var(--ease-out-soft);
 }
-/* 三栏桌面：让开左侧主导航，贴在内容列左缘 */
-@media (min-width: 1220px) {
-  .up-crumb { left: max(13.1rem, calc(50vw - 45rem)); }
-}
-/* 胶囊常驻，给正文顶部留出避让高度，避免遮住标题 */
-body.has-upcrumb .md-content__inner { padding-top: 2.9rem; }
-.up-crumb svg { width: 0.92rem; height: 0.92rem; transition: transform 0.22s var(--ease-app); }
+/* 三栏桌面：钉在右侧目录底部，随目录滚动但始终吸在目录框下沿（JS 挂到侧栏内，带 in-side） */
+.up-crumb.in-side { position: sticky; bottom: 0.4rem; width: 100%; margin: 0.9rem 0 0.1rem; z-index: 20; }
+/* 窄屏：目录收进带 transform 的抽屉，JS 改挂 body，fixed 到右下角（带 in-float） */
+.up-crumb.in-float { position: fixed; right: 1rem; bottom: 4.4rem; z-index: 900; }
+.up-crumb svg { width: 0.92rem; height: 0.92rem; transition: transform 0.24s var(--ease-out-soft); }
 .up-crumb:hover {
   background: var(--brand-teal); color: #fff;
   transform: translateY(-2px);
-  box-shadow: 0 10px 22px -10px rgba(0,148,133,.6);
+  box-shadow: 0 12px 24px -10px rgba(0,148,133,.6);
 }
 .up-crumb:hover svg { transform: translateX(-3px); }
-.up-crumb:active { transform: scale(0.95); }
-.has-anim .up-crumb { opacity: 0; animation: crumbIn 0.45s var(--ease-out-soft) 0.05s forwards; }
-@keyframes crumbIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.up-crumb:active { transform: scale(0.96); }
+.has-anim .up-crumb { opacity: 0; animation: crumbIn 0.5s var(--ease-out-soft) 0.05s forwards; }
+@keyframes crumbIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
 /* ============================================================
  * 导航与控件微交互
@@ -259,13 +255,16 @@ body.has-upcrumb .md-content__inner { padding-top: 2.9rem; }
 .md-typeset .md-button:active { transform: scale(0.97); }
 .grid.cards a:hover .octicon-arrow-right-24 { transform: translateX(3px); }
 .md-header__button, .md-search__button { transition: transform 0.25s var(--ease-app); }
-/* 回到顶部：只做上浮/向下收起，去掉 Material 默认的横向位移（点按时不再“往右跳”） */
+/* 回到顶部：只沿垂直方向上浮/下沉 + 淡入淡出，彻底去掉横向分量（不再“斜着跳”） */
 .md-top {
-  transition: transform 0.25s var(--ease-app), opacity 0.2s var(--ease-app), background-color 0.2s var(--ease-app);
-  transform: none;
+  transition: transform 0.3s var(--ease-out-soft), opacity 0.28s var(--ease-out-soft),
+              background-color 0.2s var(--ease-app), box-shadow 0.3s var(--ease-out-soft);
+  transform: translate3d(0,0,0);
+  will-change: transform, opacity;
 }
-.md-top--hidden { transform: translateY(150%) !important; opacity: 0 !important; }
-.md-top:hover { transform: translateY(-3px) scale(1.06); }
+.md-top--hidden { transform: translate3d(0,150%,0) !important; opacity: 0 !important; pointer-events: none !important; }
+.md-top:hover { transform: translate3d(0,-3px,0) scale(1.08); box-shadow: 0 10px 22px -10px rgba(0,0,0,.4); }
+.md-top:active { transform: translate3d(0,-1px,0) scale(0.96); }
 
 /* ============================================================
  * 右侧目录：多级手风琴，默认收起，展开当前阅读链
