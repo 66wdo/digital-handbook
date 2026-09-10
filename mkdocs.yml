@@ -87,7 +87,7 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - toc:
       permalink: true
-      toc_depth: 3
+      toc_depth: 4
       slugify:
         !!python/object/apply:pymdownx.slugs.slugify
         kwds:

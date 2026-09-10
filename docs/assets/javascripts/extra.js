@@ -1,12 +1,14 @@
 /* ============================================================
  * 个人知识库 · 交互动画脚本（原生 JS，无依赖，离线可用）
- *   1. data-section 分区标记（用于分区差异化动画）
+ *   1. data-section 分区标记
  *   2. 顶部阅读进度条
- *   3. 页面转场：旧页淡出、新页上浮（兼容 Material instant 无刷新）
+ *   3. 页面转场（旧页淡出、新页上浮，兼容 Material instant）
  *   4. 内容区块滚动渐显
  *   5. 卡片级联上浮
- *   6. 右侧目录默认折叠到“部件层”，点击展开其下问题，当前章节自动展开
- *   7. 返回上一页悬浮按钮
+ *   6. 右侧目录：多级手风琴，只展开当前阅读链，滑走自动收回（任意层级）
+ *   7. 左上角“返回上一层级”
+ *   8. 点目录跳转后目标标题短暂橙色高亮
+ *   9. 背景氛围光斑（缓慢漂移，只动 transform）
  * ============================================================ */
 (function () {
   "use strict";
@@ -16,14 +18,14 @@
   if (!reduceMotion) document.documentElement.classList.add("has-anim");
 
   var lastContent = null;
-  var backBtn = null;
+  var ambientBuilt = false;
 
   var CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
     'stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' +
     '<polyline points="6 9 12 15 18 9"></polyline></svg>';
   var ARROW_LEFT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
     'stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' +
-    '<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>';
+    '<polyline points="15 18 9 12 15 6"></polyline></svg>';
 
   /* ---------- 1. 分区标记 ---------- */
   function detectSection() {
@@ -45,7 +47,7 @@
     document.body.setAttribute("data-section", section);
   }
 
-  /* ---------- 2. 阅读进度条 ---------- */
+  /* ---------- 2. 进度条 + 目录手风琴跟随 ---------- */
   var ticking = false;
   function updateProgress() {
     var doc = document.documentElement;
@@ -59,7 +61,7 @@
       ticking = true;
       window.requestAnimationFrame(function () {
         updateProgress();
-        syncTocActive();
+        syncTocAccordion();
       });
     }
   }
@@ -75,7 +77,7 @@
     main.classList.remove("enter-done", "is-entering");
     void main.offsetWidth;
     main.classList.add("is-entering");
-    window.setTimeout(function () { main.classList.add("enter-done"); }, 640);
+    window.setTimeout(function () { main.classList.add("enter-done"); }, 700);
   }
 
   function isInternalNav(anchor) {
@@ -104,9 +106,9 @@
   /* ---------- 4. 滚动渐显 ---------- */
   var io = null;
   var REVEAL_SEL = [
-    ".md-content h2", ".md-content h3", ".md-content .admonition",
+    ".md-content h2", ".md-content h3", ".md-content h4", ".md-content .admonition",
     ".md-content details", ".md-content .tabbed-set", ".md-content .grid",
-    ".md-content table", ".md-content blockquote"
+    ".md-content table", ".md-content blockquote", ".md-content .figure-svg"
   ].join(",");
 
   function setupReveal() {
@@ -124,10 +126,10 @@
           io.unobserve(entry.target);
         }
       });
-    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.05 });
+    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.04 });
     nodes.forEach(function (n) {
       if (n.tagName === "H2") group = 0;
-      var delay = Math.min(group * 50, 200);
+      var delay = Math.min(group * 45, 180);
       if (delay) n.style.transitionDelay = delay + "ms";
       n.classList.add("reveal");
       group++;
@@ -144,24 +146,22 @@
     });
   }
 
-  /* ---------- 6. 右侧目录：默认折叠到部件层，点击展开 ---------- */
-  function syncTocActive() {
-    // 页面里可能有多份二级目录（左侧主导航内嵌一份、右侧侧栏一份），都要同步
+  /* ---------- 6. 多级手风琴目录 ---------- */
+  // 只展开“当前 active 标题”所在的祖先链，其余层级全部收回；滑走即自动合上
+  function syncTocAccordion() {
     document.querySelectorAll(".md-nav--secondary").forEach(function (sec) {
       var active = sec.querySelector(".md-nav__link--active");
       sec.querySelectorAll("li.toc-parent").forEach(function (p) {
-        // 用户手动收/放过后不再自动干预
-        if (p.getAttribute("data-manual") === "1") return;
         if (active && p.contains(active)) p.classList.add("toc-open");
+        else p.classList.remove("toc-open");
       });
     });
   }
 
   function setupToc() {
-    // 同时处理左侧内嵌与右侧可见的两份二级目录
     document.querySelectorAll(".md-nav--secondary").forEach(function (sec) {
-      var tops = sec.querySelectorAll(":scope > .md-nav__list > li");
-      tops.forEach(function (li) {
+      // 任意层级：只要这个 li 里还套着一层 nav，就给它加折叠开关
+      sec.querySelectorAll("li").forEach(function (li) {
         var sub = li.querySelector(":scope > nav.md-nav");
         var link = li.querySelector(":scope > .md-nav__link");
         if (!sub || !link) return;
@@ -171,83 +171,96 @@
           btn.className = "toc-toggle";
           btn.setAttribute("aria-label", "展开或收起本节目录");
           btn.innerHTML = CHEVRON;
-          // 点小三角：只展开/收起，不跳转
           btn.addEventListener("click", function (e) {
             e.preventDefault();
             e.stopPropagation();
-            li.setAttribute("data-manual", "1");
             li.classList.toggle("toc-open");
           });
           link.appendChild(btn);
         }
-        // 点部件标题：正常跳转锚点，同时展开它
-        link.addEventListener("click", function () {
-          li.setAttribute("data-manual", "1");
-          li.classList.add("toc-open");
-        });
+        link.addEventListener("click", function () { li.classList.add("toc-open"); });
       });
-      // 刚进入页面还没滚动定位 active 时，默认展开第一个部件，其余收起
-      if (!sec.querySelector("li.toc-parent.toc-open")) {
-        var first = sec.querySelector("li.toc-parent");
+    });
+    syncTocAccordion();
+    // 极端情况下还没有 active（页面顶部），默认展开第一个顶层条目
+    document.querySelectorAll(".md-nav--secondary").forEach(function (sec) {
+      if (!sec.querySelector("li.toc-open")) {
+        var first = sec.querySelector(":scope > .md-nav__list > li.toc-parent");
         if (first) first.classList.add("toc-open");
       }
     });
-    syncTocActive();
   }
 
-  /* ---------- 7. 返回上一页 ---------- */
+  /* ---------- 7. 左上角“返回上一层级” ---------- */
   function pathSegments() {
     return decodeURIComponent(location.pathname || "").split("/").filter(Boolean);
   }
 
-  function fallbackUrl(seg) {
-    // 目录型 URL：数码/分类/文章 → 回分类首页；分类首页 → 回站点首页
-    if (seg.length <= 2) return "/";
-    return "/" + seg[0] + "/" + seg[1] + "/";
+  function topTabName() {
+    var t = document.querySelector(".md-tabs__item--active .md-tabs__link");
+    return t ? t.textContent.trim() : "";
   }
 
-  function sameOrigin(ref) {
-    try { return new URL(ref).origin === location.origin; } catch (e) { return false; }
-  }
-
-  function setupBack() {
+  function setupCrumb() {
+    var old = document.querySelector(".up-crumb");
+    if (old) old.remove();
+    var inner = document.querySelector(".md-content__inner");
+    if (!inner) return;
     var seg = pathSegments();
-    // 站点首页不显示返回
     var isHome = seg.length === 0 ||
       (seg.length === 1 && /index\.html?$/.test(seg[0]));
-    if (!backBtn) {
-      backBtn = document.createElement("a");
-      backBtn.className = "back-fab";
-      backBtn.innerHTML = ARROW_LEFT + "<span>返回</span>";
-      backBtn.addEventListener("click", function (e) {
-        if (window.history.length > 1 && document.referrer && sameOrigin(document.referrer)) {
-          e.preventDefault();
-          window.history.back();
-        }
-        // 否则按 href 回退到上级页面
-      });
-      document.body.appendChild(backBtn);
-    }
-    backBtn.setAttribute("href", fallbackUrl(seg));
-    backBtn.style.display = isHome ? "none" : "";
-    if (!isHome && !reduceMotion) {
-      backBtn.classList.remove("back-show");
-      void backBtn.offsetWidth;
-      backBtn.classList.add("back-show");
-    } else if (!isHome) {
-      backBtn.classList.add("back-show");
-    }
+    if (isHome) return;
+
+    var href, label;
+    if (seg.length <= 2) { href = "/"; label = "首页"; }          // 分类首页 → 站点首页
+    else { href = "/" + seg[0] + "/" + seg[1] + "/"; label = topTabName() || seg[1]; }
+
+    var a = document.createElement("a");
+    a.className = "up-crumb";
+    a.setAttribute("href", href);
+    a.innerHTML = ARROW_LEFT + "<span>返回" + label + "</span>";
+    inner.insertBefore(a, inner.firstChild);
+  }
+
+  /* ---------- 8. 跳转后目标标题橙色高亮 ---------- */
+  var flashTimer = null;
+  function flashCurrentHeading() {
+    if (!location.hash) return;
+    var id = decodeURIComponent(location.hash.slice(1));
+    var el = null;
+    try { el = document.getElementById(id); } catch (e) { return; }
+    if (!el || !/^H[2-6]$/.test(el.tagName)) return;
+    el.classList.remove("toc-flash");
+    void el.offsetWidth;
+    el.classList.add("toc-flash");
+    window.clearTimeout(flashTimer);
+    flashTimer = window.setTimeout(function () { el.classList.remove("toc-flash"); }, 1600);
+  }
+
+  /* ---------- 9. 背景氛围层 ---------- */
+  function setupAmbient() {
+    if (ambientBuilt) return;
+    var wrap = document.createElement("div");
+    wrap.className = "ambient-bg";
+    wrap.setAttribute("aria-hidden", "true");
+    wrap.innerHTML = '<span class="ambient-blob blob-a"></span>' +
+      '<span class="ambient-blob blob-b"></span>' +
+      '<span class="ambient-blob blob-c"></span>';
+    document.body.appendChild(wrap);
+    ambientBuilt = true;
   }
 
   /* ---------- 初始化 ---------- */
   function init() {
     detectSection();
+    setupAmbient();
     playEnter();
     setupReveal();
     setupCards();
     setupToc();
-    setupBack();
+    setupCrumb();
     updateProgress();
+    window.setTimeout(flashCurrentHeading, 60);
   }
 
   document.addEventListener("DOMContentLoaded", function () {
@@ -255,13 +268,28 @@
     init();
     window.addEventListener("scroll", onScroll, { passive: true });
     document.addEventListener("click", onLinkClick, true);
+    window.addEventListener("hashchange", flashCurrentHeading);
+    // 点右侧目录时也补一次高亮（部分锚点跳转不触发 hashchange）
+    document.addEventListener("click", function (e) {
+      var a = e.target.closest && e.target.closest(".md-nav--secondary a[href^='#']");
+      if (a) window.setTimeout(flashCurrentHeading, 80);
+    }, true);
 
     if ("MutationObserver" in window) {
       var mo = new MutationObserver(function () {
         var c = currentContent();
         if (c && c !== lastContent) {
           lastContent = c;
-          window.scrollTo(0, 0);
+          if (location.hash) {
+            // 带锚点进入（刷新/外链/跨页#锚点）时保留定位，不要拉回顶部
+            window.requestAnimationFrame(function () {
+              var t = null;
+              try { t = document.getElementById(decodeURIComponent(location.hash.slice(1))); } catch (e) {}
+              if (t) t.scrollIntoView();
+            });
+          } else {
+            window.scrollTo(0, 0);
+          }
           init();
         }
       });

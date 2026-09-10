@@ -11,7 +11,7 @@
 
 <div class="grid cards" markdown>
 
--   :material-magnify-scan:{ .lg .middle } __第一步 · 硬件怎么选__
+-   :material-magnify-scan:{ .lg .middle } __硬件怎么选__
 
     ---
 
@@ -19,7 +19,7 @@
 
     [:octicons-arrow-right-24: 进入](硬件怎么选.md)
 
--   :material-tools:{ .lg .middle } __第二步 · 装机流程指南__
+-   :material-tools:{ .lg .middle } __装机流程指南__
 
     ---
 
@@ -27,7 +27,7 @@
 
     [:octicons-arrow-right-24: 进入](装机流程指南.md)
 
--   :material-bug-check:{ .lg .middle } __第三步 · 点亮与故障排查__
+-   :material-bug-check:{ .lg .middle } __点亮与故障排查__
 
     ---
 
