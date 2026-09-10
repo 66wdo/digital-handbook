@@ -13,11 +13,11 @@
 
     [:octicons-arrow-right-24: 进入分类](数码/手机/index.md)
 
--   :material-desktop-tower:{ .lg .middle } __电脑装机__
+-   :material-desktop-tower:{ .lg .middle } __电脑__
 
     ---
 
-    CPU、显卡、主板、内存、电源等硬件怎么选，兼容性怎么判断，以及从零装机全流程。
+    CPU、显卡、主板、内存、电源怎么选、彼此怎么匹配，从零装机全流程，以及点亮与故障排查。
 
     [:octicons-arrow-right-24: 进入分类](数码/装机/index.md)
 
