@@ -1,7 +1,7 @@
 /* ============================================================
  * 个人知识库自定义样式 + 交互动画
- * 设计取向：克制、流畅、有“高级感”——只动 transform / opacity，
- * 走 GPU 加速，时长 200~600ms，缓动接近原生 App 的缓出曲线。
+ * 设计取向：克制、流畅、有“高级感”——动效只走 transform / opacity，
+ * 主题变色走 background-color / color / border-color 的平滑过渡。
  * ============================================================ */
 
 :root {
@@ -10,7 +10,9 @@
   --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
   --brand-teal: #009485;
   --brand-amber: #ffab00;
-  --rise: 16px;
+  --rise: 18px;
+  /* 深浅主题切换的“缓冲”时长，按一下缓慢变色，不刺眼 */
+  --theme-dur: 0.45s;
 }
 
 /* ---------- 中文阅读体验：行高放宽、字号微调（原有保留） ---------- */
@@ -34,6 +36,33 @@ html {
 }
 
 /* ============================================================
+ * 0. 深浅色切换：所有“表面 / 文字 / 边框 / 图标”平滑渐变
+ *    只过渡颜色类属性，不碰 transform，避免干扰位移动画。
+ *    （自定义了 transform 的组件在各自规则里也补上颜色过渡）
+ * ============================================================ */
+body,
+.md-header, .md-header__topic, .md-header__button,
+.md-tabs, .md-tabs__list, .md-tabs__link,
+.md-main, .md-content, .md-content__inner,
+.md-sidebar, .md-sidebar__inner, .md-nav, .md-nav__item,
+.md-footer, .md-top,
+.md-typeset, .md-typeset h1, .md-typeset h2, .md-typeset h3, .md-typeset h4,
+.md-typeset p, .md-typeset li, .md-typeset td, .md-typeset th,
+.md-typeset blockquote, .md-typeset .tabbed-set, .md-typeset .tabbed-labels,
+.md-typeset .tabbed-labels label, .md-typeset code, .md-typeset pre,
+.md-typeset .highlight, .md-search, .md-search__inner, .md-search__form,
+.md-search__output, .md-search__scrollwrap,
+.headerlink, .md-ellipsis {
+  transition:
+    background-color var(--theme-dur) var(--ease-app),
+    color var(--theme-dur) var(--ease-app),
+    border-color var(--theme-dur) var(--ease-app),
+    box-shadow var(--theme-dur) var(--ease-app),
+    fill var(--theme-dur) var(--ease-app),
+    stroke var(--theme-dur) var(--ease-app);
+}
+
+/* ============================================================
  * 1. 顶部阅读进度条（宽度由 extra.js 写入 --scroll）
  * ============================================================ */
 body::before {
@@ -50,31 +79,39 @@ body::before {
   z-index: 1000;
   pointer-events: none;
   opacity: 0.9;
-  transition: transform 0.1s linear;
 }
 
 /* ============================================================
- * 2. App 式页面进入转场：内容轻微上浮 + 淡入
+ * 2. 页面转场：旧页柔和淡出下沉，新页上浮淡入（App 式）
  * ============================================================ */
 .has-anim .md-content {
   will-change: transform, opacity;
 }
 
+/* 新页面进入 */
 .has-anim .md-content.is-entering .md-content__inner {
-  animation: pageEnter 0.55s var(--ease-out-soft) both;
+  animation: pageEnter 0.5s var(--ease-out-soft) both;
 }
 
 @keyframes pageEnter {
   from {
     opacity: 0;
-    transform: translateY(var(--rise)) scale(0.994);
-    filter: blur(2px);
+    transform: translateY(24px) scale(0.992);
   }
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
-    filter: blur(0);
   }
+}
+
+/* 旧页面退场（点击内部链接瞬间，由 JS 加 is-leaving） */
+.has-anim body.is-leaving .md-content__inner {
+  animation: pageLeave 0.18s var(--ease-app) forwards;
+}
+
+@keyframes pageLeave {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-12px) scale(0.996); }
 }
 
 /* ============================================================
@@ -93,22 +130,55 @@ body::before {
   transform: translateY(0);
 }
 
-/* 标题左侧加一条会“生长”的强调短线 */
-.has-anim .md-content .reveal-visible h2,
+/* ============================================================
+ * 4. 标题层级：明显加粗、一眼区分正文，且保持美观（不换字体）
+ * ============================================================ */
 .md-typeset h2 {
-  position: relative;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  margin: 2.1em 0 0.9em;
+  padding: 0.18em 0 0.28em 0.72rem;
+  line-height: 1.35;
+  border-left: 4px solid var(--brand-teal);
+  border-radius: 2px;
+}
+
+.md-typeset h2 .headerlink {
+  border-left: none;
+}
+
+.md-typeset h3 {
+  font-weight: 700;
+  font-size: 1.06em;
+  margin: 1.7em 0 0.55em;
+  line-height: 1.4;
+}
+
+.md-typeset h4 {
+  font-weight: 600;
+}
+
+/* 标题前的小图标：主题色、与文字对齐，更精致 */
+.md-typeset h2 > .twemoji,
+.md-typeset h3 > .twemoji {
+  color: var(--brand-teal);
+  margin-right: 0.35rem;
+  transform: translateY(-1px);
 }
 
 /* ============================================================
- * 4. 首页 / 分类卡片：级联上浮 + hover 光泽扫过
+ * 5. 首页 / 分类卡片：级联上浮 + hover 光泽扫过
  * ============================================================ */
 .md-typeset .grid.cards > ul > li {
   border-radius: 12px;
   position: relative;
   overflow: hidden;
-  transition: transform 0.22s var(--ease-app),
-              box-shadow 0.22s var(--ease-app),
-              border-color 0.22s var(--ease-app);
+  transition:
+    transform 0.22s var(--ease-app),
+    box-shadow 0.22s var(--ease-app),
+    border-color 0.22s var(--ease-app),
+    background-color var(--theme-dur) var(--ease-app),
+    color var(--theme-dur) var(--ease-app);
 }
 
 /* 卡片 hover：浮起 + 柔和投影 + 边框点亮 */
@@ -152,9 +222,6 @@ body::before {
 /* JS 驱动的级联入场 */
 .has-anim .md-content .card-rise {
   opacity: 0;
-}
-
-.has-anim .md-content .card-rise {
   animation: cardRise 0.6s var(--ease-out-soft) forwards;
 }
 
@@ -164,29 +231,23 @@ body::before {
 }
 
 @keyframes cardRise {
-  from {
-    opacity: 0;
-    transform: translateY(24px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(24px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* ============================================================
- * 5. 导航与控件的微交互
+ * 6. 导航与控件的微交互
  * ============================================================ */
-
-/* 顶部一级导航：下划线滑入 */
 .md-tabs__link {
-  transition: color 0.2s var(--ease-app), opacity 0.2s var(--ease-app);
+  transition: color 0.2s var(--ease-app), opacity 0.2s var(--ease-app),
+              background-color var(--theme-dur) var(--ease-app);
 }
 
 .md-tabs__item {
   position: relative;
 }
 
+/* 顶部一级导航：橙色下划线伸长（你认可的效果，保留） */
 .md-tabs__item::after {
   content: "";
   position: absolute;
@@ -206,9 +267,10 @@ body::before {
   transform: scaleX(1);
 }
 
-/* 侧边栏链接：hover 轻微右移、激活项加左侧色条 */
+/* 侧边栏链接：hover 轻微右移 */
 .md-nav__link {
-  transition: color 0.18s var(--ease-app), transform 0.18s var(--ease-app);
+  transition: color 0.18s var(--ease-app), transform 0.18s var(--ease-app),
+              background-color var(--theme-dur) var(--ease-app);
   border-radius: 6px;
 }
 
@@ -216,9 +278,11 @@ body::before {
   transform: translateX(3px);
 }
 
-/* 按钮 / 卡片内箭头：hover 时箭头向右滑 */
+/* 按钮 */
 .md-typeset .md-button {
-  transition: transform 0.2s var(--ease-app), box-shadow 0.2s var(--ease-app);
+  transition: transform 0.2s var(--ease-app), box-shadow 0.2s var(--ease-app),
+              background-color var(--theme-dur) var(--ease-app),
+              color var(--theme-dur) var(--ease-app);
   border-radius: 8px;
 }
 
@@ -227,12 +291,10 @@ body::before {
   box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.35);
 }
 
-.grid.cards a:hover .octicon-arrow-right-24,
-.grid.cards a:hover .twemoji {
+.grid.cards a:hover .octicon-arrow-right-24 {
   transform: translateX(3px);
 }
 
-/* 回到顶部、搜索等圆形按钮回弹 */
 .md-top,
 .md-header__button,
 .md-search__button {
@@ -244,12 +306,16 @@ body::before {
 }
 
 /* ============================================================
- * 6. 正文细节：提示框 / 表格 / 图片 / 标签页
+ * 7. 正文细节：提示框 / 表格 / 图片 / 标签页
  * ============================================================ */
 .md-typeset details,
-.md-typeset .admonition {
+.md-typeset .admonition,
+.md-typeset .admonition-title {
+  transition: box-shadow 0.2s var(--ease-app),
+              background-color var(--theme-dur) var(--ease-app),
+              border-color var(--theme-dur) var(--ease-app),
+              color var(--theme-dur) var(--ease-app);
   border-radius: 10px;
-  transition: box-shadow 0.2s var(--ease-app), transform 0.2s var(--ease-app);
 }
 
 .md-typeset .admonition:hover {
@@ -286,18 +352,11 @@ body::before {
   box-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.4);
 }
 
-/* 任务清单完成项的过渡 */
-.md-typeset .task-list-item .task-list-control {
-  transition: transform 0.15s var(--ease-app);
-}
-
 /* ============================================================
- * 7. 分区差异化动画主题（data-section 由 extra.js 写入）
- *    目前先为「电脑」分区做专属质感，其余分区沿用默认，
- *    后续要让每个分区动画不同，只需在此追加 [data-section="xxx"]。
+ * 8. 分区差异化动画主题（data-section 由 extra.js 写入）
+ *    目前先为「电脑」分区做专属质感，其余沿用默认；
+ *    后续要让每个分区动画不同，只需追加 [data-section="xxx"]。
  * ============================================================ */
-
-/* 电脑分区：青色辉光，进入时上浮幅度略大，更“稳” */
 body[data-section="pc"]::before {
   background: linear-gradient(90deg, #00897b, #4dd0e1 55%, var(--brand-amber));
 }
@@ -307,14 +366,8 @@ body[data-section="pc"] .md-content.is-entering .md-content__inner {
 }
 
 @keyframes pageEnterPC {
-  from {
-    opacity: 0;
-    transform: translateY(22px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(26px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 body[data-section="pc"] .md-typeset .grid.cards > ul > li:hover {
@@ -322,14 +375,19 @@ body[data-section="pc"] .md-typeset .grid.cards > ul > li:hover {
 }
 
 /* ============================================================
- * 8. 无障碍：用户开启「减少动态效果」时，关闭一切动画/位移
+ * 9. 无障碍：开启「减少动态效果」时关闭一切动画/位移，
+ *    但保留主题切换的颜色渐变（它不产生运动）。
  * ============================================================ */
 @media (prefers-reduced-motion: reduce) {
+  .has-anim .md-content.is-entering .md-content__inner,
+  .has-anim body.is-leaving .md-content__inner,
+  .has-anim .md-content .card-rise,
+  .md-typeset .tabbed-content {
+    animation: none !important;
+  }
   *,
   *::before,
   *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }

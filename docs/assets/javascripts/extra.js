@@ -3,10 +3,11 @@
  * 功能：
  *   1. 分区标记 data-section —— 不同分区可挂不同动画主题
  *   2. 顶部阅读进度条
- *   3. App 式页面进入转场（兼容 Material 的 instant 无刷新切换）
+ *   3. 页面转场：点击内部链接旧页柔和淡出，新页上浮淡入
+ *      （同时兼容整页加载与 Material 的 instant 无刷新切换）
  *   4. 内容区块滚动渐显（轻微 stagger，克制不花哨）
- *   5. 首页分类卡片级联上浮
- * 无障碍：尊重系统「减少动态效果」设置，开启后全部动画一次性呈现
+ *   5. 首页 / 分类卡片级联上浮
+ * 无障碍：尊重系统「减少动态效果」设置，开启后不做位移动画。
  * ============================================================ */
 (function () {
   "use strict";
@@ -14,10 +15,12 @@
   var reduceMotion = window.matchMedia &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // 只有 JS 可用且不需要减少动画时才隐藏待动画元素，保证无 JS / 降级时内容直接可见
+  // 只有 JS 可用且不需要减少动画时才隐藏待动画元素，保证降级时内容直接可见
   if (!reduceMotion) document.documentElement.classList.add("has-anim");
 
-  /* ---------- 1. 根据 URL 给 body 打分区标记，用于分区差异化动画 ---------- */
+  var lastContent = null; // 记录当前 .md-content，用于识别 instant 切换后的新页面
+
+  /* ---------- 1. 根据 URL 给 body 打分区标记 ---------- */
   function detectSection() {
     var path = decodeURIComponent(location.pathname || "");
     var map = [
@@ -53,19 +56,48 @@
     }
   }
 
-  /* ---------- 3. App 式页面进入转场 ---------- */
+  /* ---------- 3. 页面转场 ---------- */
+  function currentContent() {
+    return document.querySelector(".md-content");
+  }
+
+  // 新页面进入：重播上浮淡入
   function playEnter() {
-    var main = document.querySelector(".md-content");
+    var main = currentContent();
     if (!main) return;
+    document.body.classList.remove("is-leaving");
     if (reduceMotion) { main.classList.add("enter-done"); return; }
-    main.classList.remove("enter-done");
-    main.classList.remove("is-entering");
-    // 强制 reflow，保证 instant 切换时动画能重新触发
-    void main.offsetWidth;
+    main.classList.remove("enter-done", "is-entering");
+    void main.offsetWidth; // 强制 reflow，保证动画重新触发
     main.classList.add("is-entering");
+    window.setTimeout(function () { main.classList.add("enter-done"); }, 640);
+  }
+
+  // 判断一个链接是否属于“站内页面跳转”（这些才做退场，外链/下载/同页锚点不做）
+  function isInternalNav(anchor) {
+    if (!anchor || !anchor.href) return false;
+    if (anchor.target && anchor.target !== "_self") return false;
+    if (anchor.hasAttribute("download")) return false;
+    if (anchor.getAttribute("href") && anchor.getAttribute("href").charAt(0) === "#") return false;
+    var url;
+    try { url = new URL(anchor.href, location.href); } catch (e) { return false; }
+    if (url.origin !== location.origin) return false;
+    if (url.pathname === location.pathname) return false; // 同页只换 hash
+    var ext = url.pathname.split(".").pop().toLowerCase();
+    if (["zip", "pdf", "png", "jpg", "jpeg", "gif", "svg", "mp4"].indexOf(ext) !== -1) return false;
+    return true;
+  }
+
+  // 点击站内链接：旧页先柔和淡出下沉，instant 会紧接着替换为新页
+  function onLinkClick(e) {
+    if (reduceMotion || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    var a = e.target.closest ? e.target.closest("a") : null;
+    if (!isInternalNav(a)) return;
+    document.body.classList.add("is-leaving");
+    // 兜底：若跳转被取消（例如 instant 判定不外跳），300ms 后一定复位，避免卡在退场态
     window.setTimeout(function () {
-      main.classList.add("enter-done");
-    }, 620);
+      document.body.classList.remove("is-leaving");
+    }, 320);
   }
 
   /* ---------- 4. 内容区块滚动渐显 ---------- */
@@ -98,10 +130,9 @@
       });
     }, { rootMargin: "0px 0px -8% 0px", threshold: 0.05 });
 
-    nodes.forEach(function (n, idx) {
-      // 同一屏内的区块做轻微级联，封顶延迟，避免越往下越慢
+    nodes.forEach(function (n) {
       if (n.tagName === "H2") group = 0;
-      var delay = Math.min(group * 55, 220);
+      var delay = Math.min(group * 50, 200);
       if (delay) n.style.transitionDelay = delay + "ms";
       n.classList.add("reveal");
       group++;
@@ -109,7 +140,7 @@
     });
   }
 
-  /* ---------- 5. 首页 / 分类卡片级联上浮 ---------- */
+  /* ---------- 5. 卡片级联上浮 ---------- */
   function setupCards() {
     var cards = document.querySelectorAll(".md-content .grid.cards > ul > li");
     cards.forEach(function (card, idx) {
@@ -119,7 +150,7 @@
     });
   }
 
-  /* ---------- 初始化（每次页面/instant 切换都会调用） ---------- */
+  /* ---------- 初始化（首次加载与每次 instant 切换都会调用） ---------- */
   function init() {
     detectSection();
     playEnter();
@@ -129,10 +160,28 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
+    lastContent = currentContent();
     init();
+
     window.addEventListener("scroll", onScroll, { passive: true });
-    // Material instant 无刷新切换完成后会派发 locationchange
+    document.addEventListener("click", onLinkClick, true); // 捕获阶段，先于 instant 处理
+
+    // Material instant 无刷新切换：用 MutationObserver 感知 .md-content 被替换
+    if ("MutationObserver" in window) {
+      var mo = new MutationObserver(function () {
+        var c = currentContent();
+        if (c && c !== lastContent) {
+          lastContent = c;
+          window.scrollTo(0, 0);
+          init();
+        }
+      });
+      mo.observe(document.body, { childList: true, subtree: true });
+    }
+
+    // 多重兜底：instant 的 locationchange、bfcache pageshow、前进后退
     window.addEventListener("locationchange", init);
     window.addEventListener("pageshow", init);
+    window.addEventListener("popstate", init);
   });
 })();
