@@ -12,8 +12,8 @@
 }
 
 /* ---------- 中文阅读体验 ---------- */
-.md-typeset { font-size: 0.76rem; line-height: 1.75; }
-.md-typeset td, .md-typeset th { font-size: 0.72rem; }
+.md-typeset { font-size: 0.82rem; line-height: 1.78; }
+.md-typeset td, .md-typeset th { font-size: 0.78rem; }
 .md-grid { max-width: 1440px; }
 html { scroll-behavior: smooth; }
 
@@ -319,17 +319,45 @@ body::before {
 .md-typeset img:not(.emoji):not(.twemoji):hover { transform: scale(1.01); box-shadow: 0 10px 30px -14px rgba(0,0,0,.4); }
 .md-typeset a { transition: color 0.15s var(--ease-app); }
 
-/* 自绘线性 SVG 配图容器 */
-.figure-svg { margin: 1.7em 0; text-align: center; }
+/* 自绘线性 SVG 配图容器 —— 讲解优先：桌面放大占满正文栏，小屏不压缩、可横向滑动 */
+.figure-svg { margin: 2.1em 0; text-align: center; }
 .figure-svg svg {
-  max-width: 100%; height: auto; border-radius: 14px;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  border-radius: 16px;
   border: 1px solid var(--md-default-fg-color--lightest);
   background: var(--md-surface-color, var(--md-default-bg-color));
-  padding: 1.1rem 1.2rem;
+  padding: 1.5rem 1.6rem;
+  box-shadow: 0 12px 32px -20px rgba(10,20,40,.4);
 }
+.figure-svg.figure-wide svg { padding: 1.7rem 1.8rem; }
 .figure-svg figcaption, .figure-svg .fig-cap {
-  font-size: 0.8rem; color: var(--md-default-fg-color--light);
-  margin-top: 0.7rem; line-height: 1.6;
+  font-size: 0.92rem; color: var(--md-default-fg-color--light);
+  margin: 0.95rem auto 0; max-width: 94%; line-height: 1.72; text-align: left;
+}
+
+/* 小屏（手机）：SVG 保持足够逻辑宽度，手指可左右滑动查看，而不是被压到看不清 */
+@media screen and (max-width: 767px) {
+  .figure-svg {
+    overflow-x: auto; overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    /* 两端留一点呼吸位，提示还能横滑 */
+    background: linear-gradient(to right, var(--md-default-bg-color) 0, transparent 2.5%) ,
+                linear-gradient(to left, var(--md-default-bg-color) 0, transparent 2.5%);
+  }
+  .figure-svg svg {
+    width: 580px; min-width: 580px; max-width: none;
+    padding: 1.05rem 1.1rem;
+  }
+  .figure-svg.figure-wide svg { width: 700px; min-width: 700px; }
+  .figure-svg figcaption, .figure-svg .fig-cap {
+    width: 580px; min-width: 580px; max-width: none;
+    margin-left: 0; text-align: left; font-size: 0.86rem;
+  }
+  .figure-svg.figure-wide figcaption { width: 700px; min-width: 700px; }
 }
 
 /* ============================================================
@@ -356,3 +384,8 @@ body[data-section="pc"] .md-typeset .grid.cards > ul > li:hover { box-shadow: 0 
   .has-anim .md-content .card-rise, .up-crumb { opacity: 1 !important; }
   .has-anim .md-typeset h2.reveal::before { transform: scaleY(1) !important; opacity: 1 !important; }
 }
+
+
+/* 重点文字上色：重要知识点=品牌橙加粗，危险=红加粗（正文用，深浅色都清晰） */
+.md-typeset .hl-key { color: #ed7d12; font-weight: 800; }
+.md-typeset .hl-danger { color: #e53935; font-weight: 800; }

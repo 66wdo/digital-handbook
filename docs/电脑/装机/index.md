@@ -17,7 +17,7 @@
 
     逐个看懂 CPU、显卡、主板、内存、硬盘、电源、散热、机箱，以及它们之间**谁决定谁、谁要和谁兼容**。
 
-    [:octicons-arrow-right-24: 进入](硬件怎么选.md)
+    [:octicons-arrow-right-24: 进入](硬件.md)
 
 -   :material-tools:{ .lg .middle } __装机流程指南__
 

@@ -11,7 +11,7 @@
 
     按需求和预算选手机：哪些参数真正重要，哪些卖点可以忽略，各品牌机型怎么看。
 
-    [:octicons-arrow-right-24: 进入分类](数码/手机/index.md)
+    [:octicons-arrow-right-24: 进入分类](手机/index.md)
 
 -   :material-desktop-tower:{ .lg .middle } __电脑__
 
@@ -19,7 +19,7 @@
 
     CPU、显卡、主板、内存、电源怎么选、彼此怎么匹配，从零装机全流程，以及点亮与故障排查。
 
-    [:octicons-arrow-right-24: 进入分类](数码/装机/index.md)
+    [:octicons-arrow-right-24: 进入分类](电脑/装机/index.md)
 
 -   :material-keyboard:{ .lg .middle } __外设__
 
@@ -27,7 +27,7 @@
 
     键盘机械轴/磁轴原理与手感、鼠标微动、显示器刷新率与面板，按用途对号入座。
 
-    [:octicons-arrow-right-24: 进入分类](数码/外设/index.md)
+    [:octicons-arrow-right-24: 进入分类](外设/index.md)
 
 -   :material-headphones:{ .lg .middle } __音频与 HiFi__
 
@@ -35,7 +35,7 @@
 
     耳机、音箱、解码/耳放、监听设备的功能逻辑与挑选方法，不被参数和玄学带节奏。
 
-    [:octicons-arrow-right-24: 进入分类](数码/音频与HiFi/index.md)
+    [:octicons-arrow-right-24: 进入分类](音频与HiFi/index.md)
 
 -   :material-gamepad-variant:{ .lg .middle } __游戏攻略__
 
