@@ -9,6 +9,18 @@
   --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
   --brand-teal: #009485;
   --brand-amber: #ffab00;
+  /* SVG 信息卡标题语义色：浅色（白底卡片）用偏深色，保证对比 */
+  --svg-card-teal: #0b857a;
+  --svg-card-blue: #4a5d96;
+  --svg-card-amber: #9c6f00;
+  --svg-card-red: #cf3a32;
+}
+/* 深色主题：卡片底随 surface 变深，标题同步提亮，避免“深底深字看不清” */
+[data-md-color-scheme="slate"] {
+  --svg-card-teal: #4fe6d4;
+  --svg-card-blue: #a9bff2;
+  --svg-card-amber: #ffd45e;
+  --svg-card-red: #ff918a;
 }
 
 /* ---------- 中文阅读体验 ---------- */
@@ -215,16 +227,16 @@ body::before {
               color 0.22s var(--ease-app), box-shadow 0.24s var(--ease-out-soft);
 }
 /* 三栏桌面：钉在右侧目录底部，随目录滚动但始终吸在目录框下沿（JS 挂到侧栏内，带 in-side） */
-.up-crumb.in-side { position: sticky; bottom: 0.4rem; width: 100%; margin: 0.9rem 0 0.1rem; z-index: 20; }
+.up-crumb.in-side { position: sticky; bottom: 0.4rem; width: 100%; margin: 0.5rem 0 0.2rem; z-index: 20; }
 /* 窄屏：目录收进带 transform 的抽屉，JS 改挂 body，fixed 到右下角（带 in-float） */
 .up-crumb.in-float { position: fixed; right: 1rem; bottom: 4.4rem; z-index: 900; }
 .up-crumb svg { width: 0.92rem; height: 0.92rem; transition: transform 0.24s var(--ease-out-soft); }
 .up-crumb:hover {
-  background: var(--brand-teal); color: #fff;
-  transform: translateY(-2px);
-  box-shadow: 0 12px 24px -10px rgba(0,148,133,.6);
+  background: rgba(0,148,133,.12); color: var(--brand-teal);
+  transform: none;
+  box-shadow: 0 6px 18px -12px rgba(0,0,0,.4);
 }
-.up-crumb:hover svg { transform: translateX(-3px); }
+.up-crumb:hover svg { transform: translateX(-2px); }
 .up-crumb:active { transform: scale(0.96); }
 .has-anim .up-crumb { opacity: 0; animation: crumbIn 0.5s var(--ease-out-soft) 0.05s forwards; }
 @keyframes crumbIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
@@ -253,6 +265,24 @@ body::before {
 .md-typeset .md-button { transition: transform 0.2s var(--ease-app), box-shadow 0.2s var(--ease-app); border-radius: 8px; }
 .md-typeset .md-button:hover { transform: translateY(-1px); box-shadow: 0 6px 16px -8px rgba(0,0,0,.35); }
 .md-typeset .md-button:active { transform: scale(0.97); }
+/* 跨分区“传送按钮”容器：横排、自动换行、统一间距（清掉按钮默认外边距，交给 gap） */
+.cross-links { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; margin: 1rem 0 .4rem; }
+.md-typeset .cross-links .md-button { margin: 0; }
+/* 两个跳转按钮统一样式：绿（青）描边、透明底、绿字；悬停变橙 */
+.md-typeset .cross-links .md-button {
+  color: var(--brand-teal, #009485);
+  border: 1.4px solid var(--brand-teal, #009485);
+  background: transparent;
+  font-weight: 600;
+}
+.md-typeset .cross-links .md-button:hover {
+  color: #ed7d12;
+  border-color: #ed7d12;
+  background: rgba(237,125,18,.08);
+}
+[data-md-color-scheme="slate"] .md-typeset .cross-links .md-button { color: #4fe6d4; border-color: #3fc4b4; }
+[data-md-color-scheme="slate"] .md-typeset .cross-links .md-button:hover { color: #ffb454; border-color: #ffb454; background: rgba(255,180,84,.10); }
+.cross-links .md-button .twemoji, .cross-links .md-button .emoji { margin-right: .35em; }
 .grid.cards a:hover .octicon-arrow-right-24 { transform: translateX(3px); }
 .md-header__button, .md-search__button { transition: transform 0.25s var(--ease-app); }
 /* 回到顶部：只沿垂直方向上浮/下沉 + 淡入淡出，彻底去掉横向分量（不再“斜着跳”） */
@@ -289,11 +319,19 @@ body::before {
   max-height: 1500px !important;
   opacity: 1;
 }
-/* 折叠小三角 */
+/* 折叠小三角：作为 flex 独立列固定在最右（不再绝对定位，长标题换行也不压字、不被相邻章节盖住） */
+.md-nav--secondary li.toc-parent > .md-nav__link {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 0.3rem;
+  padding-right: 0.5rem;
+}
+.md-nav--secondary .toc-label { flex: 1 1 auto; min-width: 0; }
 .toc-toggle {
   all: unset;
-  position: absolute; right: 0.2rem; top: 0.32rem;
-  width: 1.3rem; height: 1.3rem;
+  flex: 0 0 auto;
+  width: 1.2rem; height: 1.2rem;
+  margin-top: 0.12rem;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; border-radius: 6px; opacity: 0.6;
   transition: opacity 0.18s var(--ease-app), background-color 0.18s var(--ease-app);
@@ -301,7 +339,32 @@ body::before {
 .toc-toggle:hover { opacity: 1; background: rgba(0,148,133,.12); }
 .toc-toggle svg { width: 0.72rem; height: 0.72rem; transition: transform 0.28s var(--ease-app); }
 .md-nav--secondary li.toc-parent.toc-open > .md-nav__link > .toc-toggle svg { transform: rotate(180deg); }
-.md-nav--secondary li.toc-parent > .md-nav__link { padding-right: 1.55rem; }
+
+/* ===== 本轮修复：层级颜色统一 / 桌面隐藏抽屉开关 / 吸底返回留白 ===== */
+/* 各级目录文字统一颜色，层级只靠缩进区分，不再一级比一级淡；当前项用主题青加粗 */
+.md-sidebar--secondary .md-nav--secondary .md-nav__link {
+  color: var(--md-default-fg-color--light); font-weight: 400;
+}
+.md-sidebar--secondary .md-nav--secondary > .md-nav__list > li > .md-nav__link {
+  color: var(--md-default-fg-color); font-weight: 700;
+}
+.md-sidebar--secondary .md-nav--secondary .md-nav__link--active,
+.md-sidebar--secondary .md-nav--secondary .md-nav__item--active > .md-nav__link {
+  color: var(--brand-teal); font-weight: 700;
+}
+/* 桌面三栏右侧目录常驻：隐藏 Material 给手机抽屉用的“目录”开关图标，并禁止其点击（避免乱跳） */
+@media (min-width: 1220px) {
+  .md-sidebar--secondary label.md-nav__title { pointer-events: none; cursor: default; }
+  .md-sidebar--secondary .md-nav__title .md-nav__icon { display: none !important; }
+}
+/* 吸底“返回”按钮上方留白，目录最后一项滚动时不会被按钮压住、小箭头不被遮挡 */
+.md-sidebar--secondary .md-nav--secondary { padding-bottom: 3.6rem; }
+
+/* 点目录跳转的一瞬间：子目录直接处于最终展开态（不播 max-height 动画），
+   scrollIntoView 才能按最终坐标定位，避免动画前的折叠坐标把上方第一个子项吞掉 */
+.toc-jumping .md-sidebar--secondary li.toc-parent > nav.md-nav {
+  transition: none !important;
+}
 
 /* ============================================================
  * 正文细节：提示框 / 表格 / 标签页 / 配图
@@ -388,4 +451,5 @@ body[data-section="pc"] .md-typeset .grid.cards > ul > li:hover { box-shadow: 0 
 
 /* 重点文字上色：重要知识点=品牌橙加粗，危险=红加粗（正文用，深浅色都清晰） */
 .md-typeset .hl-key { color: #ed7d12; font-weight: 800; }
+[data-md-color-scheme="slate"] .md-typeset .hl-key { color: #ffb454; }
 .md-typeset .hl-danger { color: #e53935; font-weight: 800; }

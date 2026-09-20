@@ -5,14 +5,6 @@
 
 <div class="grid cards" markdown>
 
--   :material-cellphone:{ .lg .middle } __手机选购__
-
-    ---
-
-    按需求和预算选手机：哪些参数真正重要，哪些卖点可以忽略，各品牌机型怎么看。
-
-    [:octicons-arrow-right-24: 进入分类](手机/index.md)
-
 -   :material-desktop-tower:{ .lg .middle } __电脑__
 
     ---

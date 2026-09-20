@@ -52,10 +52,12 @@
   /* ---------- 2. 进度条 + 目录手风琴 ---------- */
   var ticking = false;
   var tocLocked = false;          // 点击目录后的平滑滚动期间为 true，冻结手风琴
-  var tocMaxTimer = null, tocEndTimer = null, flashTimer = null;
+  var tocMaxTimer = null, tocEndTimer = null, flashTimer = null, tocJumpTimer = null;
   var pinId = null;               // 点击目录后锁定的目标：停在它附近时，手风琴以它为准（不盲信滚动监听）
   var lastFlashAt = 0;            // 上次高亮时间，防止同标题短时间重播（“又闪一下”）
   var followWrap = null, followTop = null;  // 锁定期间固定右侧目录自身的滚动位置，不让它沿途跟随
+  // 用户手动点小箭头收起的目录项：滚动跟随不得把它又自动展开（WeakSet 随 DOM 重建自然失效）
+  var userCollapsed = new WeakSet();
 
   function updateProgress() {
     var doc = document.documentElement;
@@ -70,6 +72,8 @@
     var parents = sec.querySelectorAll("li.toc-parent");
     for (var i = 0; i < parents.length; i++) {
       var p = parents[i];
+      // 用户亲手收起的分支：即使包含当前阅读项，也保持收起，不被滚动跟随弹开
+      if (userCollapsed.has(p)) { p.classList.remove("toc-open"); continue; }
       if (target && p.contains(target)) p.classList.add("toc-open");
       else p.classList.remove("toc-open");
     }
@@ -132,6 +136,10 @@
     var links = linkForId(id);
     document.querySelectorAll(".md-nav--secondary").forEach(function (sec) {
       var target = tocLinkById(sec, id);
+      // 主动点链接跳转：目标所在的祖先链应正常展开，清掉它们此前的手动收起标记
+      sec.querySelectorAll("li.toc-parent").forEach(function (p) {
+        if (target && p.contains(target)) userCollapsed.delete(p);
+      });
       renderAccordion(sec, target);
       if (target) sec._lastKey = target.getAttribute("href");
     });
@@ -315,6 +323,19 @@
         var link = li.querySelector(":scope > .md-nav__link");
         if (!sub || !link) return;
         li.classList.add("toc-parent");
+        // 把链接文字包进 .toc-label，让小箭头成为独立 flex 列固定在最右：
+        // 无论层级多深、标题是否换行，箭头都不压字，也不会被后面的章节盖住
+        if (!link.querySelector(".toc-label")) {
+          var lab = document.createElement("span");
+          lab.className = "toc-label";
+          [].slice.call(link.childNodes).forEach(function (node) {
+            if (node.nodeType === 3 ||
+                (node.nodeType === 1 && !node.classList.contains("toc-toggle"))) {
+              lab.appendChild(node);
+            }
+          });
+          link.insertBefore(lab, link.firstChild);
+        }
         if (!link.querySelector(".toc-toggle")) {
           var btn = document.createElement("button");
           btn.className = "toc-toggle";
@@ -323,7 +344,14 @@
           btn.addEventListener("click", function (e) {
             e.preventDefault();
             e.stopPropagation();
-            li.classList.toggle("toc-open");
+            // 记录用户的手动折叠意图：收起则记住（滚动跟随不得弹回），展开则解除
+            if (li.classList.contains("toc-open")) {
+              li.classList.remove("toc-open");
+              userCollapsed.add(li);
+            } else {
+              li.classList.add("toc-open");
+              userCollapsed.delete(li);
+            }
           });
           link.appendChild(btn);
         }
@@ -343,6 +371,8 @@
   function setupTocJump() {
     document.addEventListener("click", function (e) {
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+      // 点的是折叠小箭头：只做折叠/展开（按钮自己的 handler 处理），不触发跳转
+      if (e.target.closest && e.target.closest(".toc-toggle")) return;
       var a = e.target.closest && e.target.closest(".md-nav--secondary a[href]");
       if (!a || !a.hash || a.hash.charAt(0) !== "#") return; // 只接管本页锚点
       var id = decodeURIComponent(a.hash.slice(1));
@@ -350,9 +380,16 @@
       e.preventDefault();
       pinId = id;            // 记住点击目标：停在它附近时目录始终展开它
       try { history.replaceState(null, "", "#" + id); } catch (err) { location.hash = id; }
+      // 关键：定位前先关掉手风琴展开过渡，让子目录这一帧就处于“最终展开高度”，
+      // 否则 scrollIntoView 会按折叠态的旧坐标定位并锁定，动画结束后上方第一个子项被吞/位移异常
+      document.body.classList.add("toc-jumping");
       snapTocTo(id);         // 目录瞬间“弹”到目标（展开+高亮+框内就位），不沿途滑
       lockTocBriefly();      // 平滑滚动期间冻结目录跟随
       scrollToId(id, true);  // 正文平滑滚到视口中上（只有正文动，目录不动）
+      window.clearTimeout(tocJumpTimer);
+      tocJumpTimer = window.setTimeout(function () {
+        document.body.classList.remove("toc-jumping");
+      }, 360);
     }, true);
   }
 
@@ -427,6 +464,7 @@
 
   /* ---------- 初始化 ---------- */
   function init() {
+    userCollapsed = new WeakSet();   // instant 切页后目录是新 DOM，清空上一页的手动折叠记忆
     detectSection();
     setupAmbient();
     playEnter();
