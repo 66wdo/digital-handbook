@@ -20,29 +20,21 @@
 
     [:octicons-arrow-right-24: 进入分类](外设/index.md)
 
+-   :material-router-wireless:{ .lg .middle } __网络与组网__
+
+    ---
+
+    光猫和路由器怎么分工、网线光纤与网口怎么认、Wi-Fi 频段与覆盖、万兆内网和网卡、网速单位怎么算，以及用 ping / 丢包 / 测速把网络问题逐段定位。
+
+    [:octicons-arrow-right-24: 进入分类](网络与组网/index.md)
+
 -   :material-headphones:{ .lg .middle } __音频与 HiFi__
 
     ---
 
-    耳机 / 音箱 / 解码耳放的原理与推力、频响与 EQ、蓝牙编码与无线延迟、主动降噪、数字音源与房间声学，不被参数和玄学带节奏。
+    耳机 / 音箱 / 解码耳放的原理与推力、频响与 EQ、数字音频格式与高解析、DSD 与母带、蓝牙编码、空间音频与全景声、房间声学，不被参数和玄学带节奏。
 
     [:octicons-arrow-right-24: 进入分类](音频与HiFi/index.md)
-
--   :material-gamepad-variant:{ .lg .middle } __游戏攻略__ <small>（规划中）</small>
-
-    ---
-
-    各游戏的机制理解、流程攻略与个人打法经验，正在逐步建设。
-
-    [:octicons-arrow-right-24: 进入分类](游戏攻略/index.md)
-
--   :material-book-edit:{ .lg .middle } __写作指南__
-
-    ---
-
-    本站文章怎么写、支持哪些排版组件（提示框、标签页、表格、任务清单……）。
-
-    [:octicons-arrow-right-24: 查看指南](写作指南.md)
 
 </div>
 
