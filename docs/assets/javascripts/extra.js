@@ -32,12 +32,12 @@
   /* ---------- 1. 分区标记 ---------- */
   function detectSection() {
     var path = decodeURIComponent(location.pathname || "");
+    // 顺序敏感：电脑文章都在 /电脑/装机/ 下；网络目录名含“网络”，放在泛匹配前
     var map = [
-      ["pc",        ["装机"]],
-      ["phone",     ["手机"]],
-      ["peripheral",["外设"]],
-      ["audio",     ["音频", "HiFi", "hifi"]],
-      ["game",      ["游戏"]]
+      ["pc",         ["装机"]],
+      ["network",    ["网络与组网", "组网"]],
+      ["peripheral", ["外设"]],
+      ["audio",      ["音频", "HiFi", "hifi"]]
     ];
     var section = "home";
     for (var i = 0; i < map.length; i++) {
@@ -401,19 +401,57 @@
     var t = document.querySelector(".md-tabs__item--active .md-tabs__link");
     return t ? t.textContent.trim() : "";
   }
+
+  // 把路径标准化成目录形式 /a/b/（去掉末尾 index.html，补尾斜杠）
+  function normPath(p) {
+    var path = p.replace(/index\.html?$/i, "");
+    if (path.charAt(path.length - 1) !== "/") path += "/";
+    return path;
+  }
+  // 取顶部标签里的分区首页链接（电脑的分区首页是 /电脑/装机/，其余是 /外设/ 等）
+  function tabList() {
+    var out = [];
+    document.querySelectorAll(".md-tabs__link").forEach(function (a) {
+      var h = a.getAttribute("href");
+      if (!h) return;
+      var u;
+      try { u = new URL(h, location.href); } catch (e) { return; }
+      if (u.origin !== location.origin) return;
+      out.push({ path: normPath(u.pathname), label: a.textContent.trim() });
+    });
+    return out;
+  }
+  // 返回键目标：分区首页/首页本身→回首页；文章页→回“最长前缀匹配”的那个分区首页
+  function resolveCrumb() {
+    var cur = normPath(location.pathname);
+    if (cur === "/") return null;
+    var tabs = tabList();
+    for (var i = 0; i < tabs.length; i++) {
+      if (tabs[i].path === cur) return { href: "/", label: "首页" };
+    }
+    var best = null;
+    for (var k = 0; k < tabs.length; k++) {
+      var t = tabs[k];
+      if (t.path === "/" || cur.indexOf(t.path) !== 0) continue;
+      if (!best || t.path.length > best.path.length) best = t;
+    }
+    if (best) return { href: best.path, label: best.label };
+    // 兜底：回上一级目录
+    var seg = pathSegments().filter(function (s) { return !/index\.html?$/i.test(s); });
+    if (seg.length <= 1) return { href: "/", label: "首页" };
+    seg.pop();
+    return { href: "/" + seg.join("/") + "/", label: topTabName() || "上一层" };
+  }
+
   var mqWide = window.matchMedia("(min-width: 1220px)");
   function setupCrumb() {
     var old = document.querySelector(".up-crumb");
     if (old) old.remove();
-    var seg = pathSegments();
-    var isHome = seg.length === 0 ||
-      (seg.length === 1 && /index\.html?$/.test(seg[0]));
-    if (isHome) { document.body.classList.remove("has-upcrumb"); return; }
+    var crumb = resolveCrumb();
+    if (!crumb) { document.body.classList.remove("has-upcrumb"); return; }
     document.body.classList.add("has-upcrumb");
 
-    var href, label;
-    if (seg.length <= 2) { href = "/"; label = "首页"; }
-    else { href = "/" + seg[0] + "/" + seg[1] + "/"; label = topTabName() || seg[1]; }
+    var href = crumb.href, label = crumb.label;
 
     var a = document.createElement("a");
     a.className = "up-crumb";

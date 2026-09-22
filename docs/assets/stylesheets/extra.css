@@ -14,7 +14,18 @@
   --svg-card-blue: #4a5d96;
   --svg-card-amber: #9c6f00;
   --svg-card-red: #cf3a32;
+  /* 分区强调色：只用于 3px 进度条 / 标题竖条 / 卡片小图标，面积小、不抢青色基调 */
+  --sec-1: #00b3a3;
+  --sec-2: #00897b;
 }
+/* 分区差异化语言：电脑=品牌青，外设=蓝，网络=绿，音频=暖橙 */
+body[data-section="peripheral"] { --sec-1: #3b93ef; --sec-2: #1f6fd0; }
+body[data-section="network"]    { --sec-1: #2fbf7e; --sec-2: #159a63; }
+body[data-section="audio"]      { --sec-1: #ef8a56; --sec-2: #e0653c; }
+[data-md-color-scheme="slate"] { --sec-1: #3fd6c4; --sec-2: #23b3a3; }
+[data-md-color-scheme="slate"] body[data-section="peripheral"] { --sec-1: #62b1ff; --sec-2: #3f92ea; }
+[data-md-color-scheme="slate"] body[data-section="network"]    { --sec-1: #54e08a; --sec-2: #26c273; }
+[data-md-color-scheme="slate"] body[data-section="audio"]      { --sec-1: #f7ad7d; --sec-2: #ef8a5c; }
 /* 深色主题：卡片底随 surface 变深，标题同步提亮，避免“深底深字看不清” */
 [data-md-color-scheme="slate"] {
   --svg-card-teal: #4fe6d4;
@@ -86,7 +97,7 @@ body::before {
   height: 3px; width: 100%;
   transform: scaleX(var(--scroll, 0));
   transform-origin: 0 50%;
-  background: linear-gradient(90deg, var(--brand-teal), #26c6da 55%, var(--brand-amber));
+  background: linear-gradient(90deg, var(--sec-1), var(--sec-2) 55%, var(--brand-amber));
   z-index: 1000;
   pointer-events: none;
   opacity: 0.9;
@@ -134,7 +145,7 @@ body::before {
   position: absolute;
   left: 0; top: 0.14em; bottom: 0.16em;
   width: 4px; border-radius: 2px;
-  background: linear-gradient(180deg, var(--brand-teal), #26c6da);
+  background: linear-gradient(180deg, var(--sec-1), var(--sec-2));
   transform: scaleY(1);
 }
 .has-anim .md-typeset h2.reveal::before { transform: scaleY(0.3); opacity: 0.4; }
@@ -146,7 +157,7 @@ body::before {
 .md-typeset h3 { font-weight: 700; font-size: 1.06em; margin: 1.7em 0 0.55em; line-height: 1.4; }
 .md-typeset h4 { font-weight: 700; font-size: 0.96em; margin: 1.3em 0 0.4em; }
 .md-typeset h2 > .twemoji, .md-typeset h3 > .twemoji, .md-typeset h4 > .twemoji {
-  color: var(--brand-teal); margin-right: 0.35rem; transform: translateY(-1px);
+  color: var(--sec-2); margin-right: 0.35rem; transform: translateY(-1px);
 }
 
 /* 点目录跳转后，目标标题做一次柔和、同步淡出的橙色强调（背景与底线同时起落，只播一次） */
@@ -182,8 +193,8 @@ body::before {
 }
 .md-typeset .grid.cards > ul > li:hover {
   transform: translateY(-4px);
-  box-shadow: 0 10px 28px -12px rgba(0,148,133,.35);
-  border-color: var(--brand-teal);
+  box-shadow: 0 12px 30px -14px color-mix(in srgb, var(--sec-2) 44%, transparent);
+  border-color: var(--sec-2);
 }
 .md-typeset .grid.cards > ul > li:active { transform: translateY(-1px) scale(0.99); }
 .md-typeset .grid.cards > ul > li::after {
@@ -426,10 +437,25 @@ body::before {
 /* ============================================================
  * 分区差异化
  * ============================================================ */
-body[data-section="pc"]::before { background: linear-gradient(90deg, #00897b, #4dd0e1 55%, var(--brand-amber)); }
-body[data-section="pc"] .md-content.is-entering .md-content__inner { animation-name: pageEnterPC; }
-@keyframes pageEnterPC { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: translateY(0); } }
-body[data-section="pc"] .md-typeset .grid.cards > ul > li:hover { box-shadow: 0 12px 30px -12px rgba(0,137,123,.45); }
+/* ---- 门面：一级标题更有分量（Material 默认偏淡），首页 hero 加青琥珀短线 ---- */
+.md-typeset h1 {
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: var(--md-default-fg-color--dark);
+}
+[data-md-color-scheme="slate"] .md-typeset h1 { color: #eef4f4; }
+body[data-section="home"] .md-typeset h1 { font-size: 2.05rem; margin-bottom: 0.45em; }
+body[data-section="home"] .md-typeset h1::after {
+  content: ""; display: block; width: 66px; height: 4px; margin-top: 0.55rem; border-radius: 2px;
+  background: linear-gradient(90deg, var(--brand-teal), var(--brand-amber));
+}
+/* 卡片标题图标用分区色（浅色下不再发灰），标题更醒目 */
+.md-typeset .grid.cards > ul > li > p:first-child .twemoji { color: var(--sec-2); }
+.md-typeset .grid.cards > ul > li > p:first-child strong {
+  color: var(--md-default-fg-color--dark); font-weight: 800; letter-spacing: 0.01em;
+}
+[data-md-color-scheme="slate"] .md-typeset .grid.cards > ul > li > p:first-child .twemoji { color: var(--sec-1); }
+[data-md-color-scheme="slate"] .md-typeset .grid.cards > ul > li > p:first-child strong { color: var(--md-default-bg-color); }
 
 /* ============================================================
  * 无障碍：减少动态效果
