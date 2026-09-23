@@ -30,7 +30,9 @@
     function showPanel(d, animate) {
       if (!d) return;
       if (d.title) panelTitle.innerHTML = d.title;
-      if (d.body) panelBody.innerHTML = d.body;
+      var bodyHtml = d.body || "";
+      if (d.link) bodyHtml += '<a class="idg-go" href="' + d.link.href + '">' + d.link.text + "<span aria-hidden=\"true\">→</span></a>";
+      if (bodyHtml) panelBody.innerHTML = bodyHtml;
       if (animate !== false) {
         panel.classList.remove("idg-panel-in");
         void panel.offsetWidth;

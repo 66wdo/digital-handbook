@@ -455,7 +455,7 @@ body[data-section="home"] .md-typeset h1::after {
   color: var(--md-default-fg-color--dark); font-weight: 800; letter-spacing: 0.01em;
 }
 [data-md-color-scheme="slate"] .md-typeset .grid.cards > ul > li > p:first-child .twemoji { color: var(--sec-1); }
-[data-md-color-scheme="slate"] .md-typeset .grid.cards > ul > li > p:first-child strong { color: var(--md-default-bg-color); }
+[data-md-color-scheme="slate"] .md-typeset .grid.cards > ul > li > p:first-child strong { color: var(--md-default-fg-color--light); }
 
 /* ============================================================
  * 无障碍：减少动态效果
@@ -507,3 +507,7 @@ body[data-section="home"] .md-typeset h1::after {
 .idg-panel-body{font-size:.86rem;line-height:1.65;color:var(--md-default-fg-color--light);}
 .idg-panel-body b{color:var(--md-default-fg-color);}
 @media (prefers-reduced-motion:reduce){.idg-node,.idg-seg,.idg-panel,.idg-link .idg-line{transition:none!important;transform:none!important;}}
+.idg-go{display:inline-flex;align-items:center;gap:.4em;margin-top:.7em;padding:.4em .9em;border-radius:999px;border:1px solid var(--sec-1);color:var(--sec-1);font-weight:700;font-size:.82rem;text-decoration:none;transition:background .2s,color .2s,transform .18s var(--ease-app);}
+.idg-go span{transition:transform .2s var(--ease-app);}
+.idg-go:hover{background:var(--sec-1);color:#08131a;transform:translateY(-1px);}
+.idg-go:hover span{transform:translateX(3px);}
