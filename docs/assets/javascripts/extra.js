@@ -404,7 +404,9 @@
 
   // 把路径标准化成目录形式 /a/b/（去掉末尾 index.html，补尾斜杠）
   function normPath(p) {
-    var path = p.replace(/index\.html?$/i, "");
+    var path = p;
+    try { path = decodeURIComponent(path); } catch (e) { path = p; }
+    path = path.replace(/index\.html?$/i, "");
     if (path.charAt(path.length - 1) !== "/") path += "/";
     return path;
   }
@@ -421,26 +423,24 @@
     });
     return out;
   }
-  // 返回键目标：分区首页/首页本身→回首页；文章页→回“最长前缀匹配”的那个分区首页
+  // 返回键目标 = 严格回退一个 URL 层级（逐级，而非跳回固定首页）：
+  //   分区首页(tab) → 站点首页；文章页 → 它的 URL 父目录（三级回二级、四级回三级）
   function resolveCrumb() {
     var cur = normPath(location.pathname);
     if (cur === "/") return null;
     var tabs = tabList();
-    for (var i = 0; i < tabs.length; i++) {
-      if (tabs[i].path === cur) return { href: "/", label: "首页" };
-    }
-    var best = null;
-    for (var k = 0; k < tabs.length; k++) {
-      var t = tabs[k];
-      if (t.path === "/" || cur.indexOf(t.path) !== 0) continue;
-      if (!best || t.path.length > best.path.length) best = t;
-    }
-    if (best) return { href: best.path, label: best.label };
-    // 兜底：回上一级目录
-    var seg = pathSegments().filter(function (s) { return !/index\.html?$/i.test(s); });
+    var isTab = tabs.some(function (t) { return t.path === cur; });
+    var seg = pathSegments().filter(function (sg) { return !/index\.html?$/i.test(sg); });
+    // 分区首页本身：逐级父目录可能是无效的中间路径（如 /电脑/），统一回站点首页
+    if (isTab) return { href: "/", label: "首页" };
     if (seg.length <= 1) return { href: "/", label: "首页" };
-    seg.pop();
-    return { href: "/" + seg.join("/") + "/", label: topTabName() || "上一层" };
+    // 文章页：去掉最后一段得到父目录
+    var parent = "/" + seg.slice(0, -1).join("/") + "/";
+    for (var i = 0; i < tabs.length; i++) {
+      if (tabs[i].path === parent) return { href: parent, label: tabs[i].label };
+    }
+    // 父目录不是顶部标签（未来更深层级）：仍逐级回该父目录，文案用通用“上一级”
+    return { href: parent, label: "上一级" };
   }
 
   var mqWide = window.matchMedia("(min-width: 1220px)");

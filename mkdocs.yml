@@ -98,6 +98,7 @@ extra_css:
 
 extra_javascript:
   - assets/javascripts/extra.js
+  - assets/javascripts/interactive-diagram.js
 
 # ---- 导航结构（新增文章后，在这里登记即会出现在菜单里）----
 nav:
