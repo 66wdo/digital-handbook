@@ -3,20 +3,39 @@
 #  文档：https://squidfunk.github.io/mkdocs-material/setup/
 # ============================================================
 
-# ---- 基本信息（创建 GitHub 仓库后，把 repo_url 改成你的地址）----
-site_name: 我的经验知识库
-site_description: 个人跨领域经验整理：电脑装机、外设、网络组网、HiFi 音频……
-site_author: 待填写
-# repo_url: https://github.com/你的用户名/你的仓库名
-# repo_name: GitHub
+# ---- 基本信息 ----
+site_name: Digital Know-How
+site_description: 66WDO 的个人数码经验集：电脑装机、外设、网络组网、HiFi 音频……
+site_author: 66WDO
+# site_url 决定每个页面的 canonical 链接与 sitemap.xml（不设则两者都缺失/为空），
+# 且必须和 GitHub Pages 实际部署地址完全一致：
+#   · 用户/组织站（推荐，仓库名就是 <用户名>.github.io，部署在根域名）：
+#       https://<用户名>.github.io/
+#   · 项目站（部署在子路径）：
+#       https://<用户名>.github.io/<仓库名>/
+# 下面为占位地址：部署前把 your-github-username 换成真实用户名（项目站再补仓库子路径）。
+# MkDocs 会依据 site_url 自动给全站链接（含 404 页、静态资源）加正确前缀，
+# 因此子路径项目站也不会出现“/ 开头链接跑到域名根、路径跑歪”的问题。
+site_url: https://66wdo.github.io/digital-handbook/
+repo_url: https://github.com/66wdo/digital-handbook
+repo_name: digital-handbook
 docs_dir: docs
 site_dir: site
+
+# 页脚版权声明（HTML 原样输出）
+copyright: >-
+  本站内容由 66WDO 创作，采用
+  <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans"
+  target="_blank" rel="license noopener">CC BY-NC-SA 4.0</a>
+  协议授权（署名-非商业性使用-相同方式共享）。
 
 # ---- 主题 ----
 theme:
   name: material
+  custom_dir: overrides
   language: zh
   font: false                 # 使用系统字体，国内打开更快、离线也能构建
+  favicon: assets/favicon.svg
   features:
     - navigation.tabs         # 顶部一级导航
     - navigation.tabs.sticky
